@@ -42,11 +42,29 @@ class Product {
   });
 
   factory Product.fromJson(Map<String, dynamic> json) => Product(
-    id: json["id"],
+    // Safely parse 'id' to int?. Handles both int and string inputs.
+    id:
+        json["id"] == null
+            ? null
+            : (json["id"] is int
+                ? json["id"]
+                : int.tryParse(json["id"].toString())),
     name: json["name"],
     description: json["description"],
-    price: json["price"],
-    stock: json["stock"],
+    // Safely parse 'price' to int?. Handles both int and string inputs.
+    price:
+        json["price"] == null
+            ? null
+            : (json["price"] is int
+                ? json["price"]
+                : int.tryParse(json["price"].toString())),
+    // Safely parse 'stock' to int?. Handles both int and string inputs.
+    stock:
+        json["stock"] == null
+            ? null
+            : (json["stock"] is int
+                ? json["stock"]
+                : int.tryParse(json["stock"].toString())),
     createdAt:
         json["created_at"] == null ? null : DateTime.parse(json["created_at"]),
     updatedAt:

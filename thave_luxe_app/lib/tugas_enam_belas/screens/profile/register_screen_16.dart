@@ -1,36 +1,31 @@
 import 'dart:async'; // For Timer
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/service_api.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/auth_provider.dart'; // Import AuthProvider
 import 'package:thave_luxe_app/tugas_enam_belas/models/auth_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/auth_provider.dart';
 
-class LoginScreen16 extends StatefulWidget {
-  const LoginScreen16({super.key});
-  static const String id = '/login16';
+class RegisterScreen16 extends StatefulWidget {
+  const RegisterScreen16({super.key});
+  static const String id = '/register16';
 
   @override
-  State<LoginScreen16> createState() => _LoginScreen16State();
+  State<RegisterScreen16> createState() => _RegisterScreen16State();
 }
 
-class _LoginScreen16State extends State<LoginScreen16> {
+class _RegisterScreen16State extends State<RegisterScreen16> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
-  // Global key for the form to handle validation
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  // Controllers for text fields
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthProvider _authProvider = AuthProvider();
 
-  // Service instance for API calls
-  final TokoOnlineService _tokoOnlineService = TokoOnlineService();
-
-  // State for loading indicator during API calls
   bool _isLoading = false;
+  bool _isPasswordVisible = false; // New state for password visibility
 
-  // Paths to your background images
   final List<String> _imagePaths = [
     'assets/image/model-1.JPEG',
     'assets/image/model-2.JPEG',
@@ -40,10 +35,8 @@ class _LoginScreen16State extends State<LoginScreen16> {
   @override
   void initState() {
     super.initState();
-    // Initialize the auto-scrolling for the background images
     Timer.periodic(const Duration(seconds: 4), (timer) {
       if (_pageController.hasClients) {
-        // Check if pageController is attached to avoid errors
         if (_currentPage < _imagePaths.length - 1) {
           _currentPage++;
         } else {
@@ -60,73 +53,62 @@ class _LoginScreen16State extends State<LoginScreen16> {
 
   @override
   void dispose() {
-    // Dispose all controllers to prevent memory leaks
     _pageController.dispose();
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
-  // --- Login Logic ---
-  Future<void> _login() async {
-    // Validate the form before attempting login
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) {
       _showSnackBar("Please fill in all fields correctly.", Colors.orange);
       return;
     }
 
     setState(() {
-      _isLoading = true; // Show loading indicator
+      _isLoading = true;
     });
 
     try {
-      final AuthResponse response = await _tokoOnlineService.loginUser(
+      final AuthResponse response = await _authProvider.registerUser(
+        name: _nameController.text,
         email: _emailController.text,
         password: _passwordController.text,
       );
-
-      // Handle successful login
-      _showSnackBar(response.message ?? "Login successful!", Colors.green);
-      // Navigate to home screen or dashboard upon successful login
-      // Example: Navigator.pushReplacementNamed(context, '/home');
+      _showSnackBar(
+        response.message ?? "Registration successful!",
+        Colors.green,
+      );
+      // It's common to navigate back to the login screen after successful registration
+      Navigator.pop(context);
     } on Exception catch (e) {
-      // Handle login errors
-      print('Login Error: $e'); // Log the full error for debugging
-
+      print('Register Error: $e');
       String errorMessage = "An unexpected error occurred.";
-      if (e.toString().contains("Invalid credentials")) {
-        errorMessage = "Invalid email or password.";
+      if (e.toString().contains("Email already exists")) {
+        errorMessage = "Email is already in use.";
       } else if (e.toString().contains("Validation failed.")) {
-        // This means the API returned a 422 with validation errors
         errorMessage = "Validation failed. Please check your inputs.";
       } else {
-        errorMessage = e.toString().replaceFirst(
-          'Exception: ',
-          '',
-        ); // Clean up 'Exception: ' prefix
+        errorMessage = e.toString().replaceFirst('Exception: ', '');
       }
-
       _showSnackBar(errorMessage, Colors.red);
     } finally {
       setState(() {
-        _isLoading = false; // Hide loading indicator
+        _isLoading = false;
       });
     }
   }
 
-  // Helper method to show SnackBar messages
   void _showSnackBar(String message, Color color) {
-    // Ensure the context is still valid before showing SnackBar
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
           backgroundColor: color,
           duration: const Duration(seconds: 3),
-          behavior:
-              SnackBarBehavior
-                  .floating, // Make it floating for better visibility
-          margin: const EdgeInsets.all(10), // Add margin
+          behavior: SnackBarBehavior.floating,
+          margin: const EdgeInsets.all(10),
         ),
       );
     }
@@ -137,7 +119,6 @@ class _LoginScreen16State extends State<LoginScreen16> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background slider
           PageView.builder(
             controller: _pageController,
             itemCount: _imagePaths.length,
@@ -146,21 +127,16 @@ class _LoginScreen16State extends State<LoginScreen16> {
                 _imagePaths[index],
                 fit: BoxFit.cover,
                 width: double.infinity,
-                height: double.infinity, // Ensure image fills height
+                height: double.infinity,
               );
             },
           ),
-
-          // Overlay gelap (dark overlay)
           Container(color: Colors.black.withOpacity(0.5)),
-
-          // Login form content
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Form(
-                // Wrapped with Form for validation
-                key: _formKey, // Assign the form key
+                key: _formKey,
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -168,22 +144,29 @@ class _LoginScreen16State extends State<LoginScreen16> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min, // Keep column compact
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        'Welcome Back',
+                        'Create Account',
                         style: GoogleFonts.playfairDisplay(
                           fontSize: 32,
-                          color: const Color.fromARGB(
-                            255,
-                            255,
-                            255,
-                            254,
-                          ), // Gold/Off-white
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       const SizedBox(height: 24),
+                      _buildTextField(
+                        'Name',
+                        controller: _nameController,
+                        keyboardType: TextInputType.name,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your name';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
                       _buildTextField(
                         'Email',
                         controller: _emailController,
@@ -192,7 +175,6 @@ class _LoginScreen16State extends State<LoginScreen16> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
                           }
-                          // Basic email format validation
                           if (!RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(value)) {
                             return 'Please enter a valid email';
                           }
@@ -203,22 +185,27 @@ class _LoginScreen16State extends State<LoginScreen16> {
                       _buildTextField(
                         'Password',
                         controller: _passwordController,
-                        isPassword: true,
+                        isPassword: !_isPasswordVisible,
                         keyboardType: TextInputType.visiblePassword,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your password';
                           }
-                          // Example minimum password length
                           if (value.length < 6) {
                             return 'Password must be at least 6 characters long';
                           }
                           return null;
                         },
+
+                        toggleVisibility: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
+                        isPasswordType: true,
+                        isCurrentPasswordVisible: _isPasswordVisible,
                       ),
                       const SizedBox(height: 24),
-
-                      // Login Button (with loading indicator)
                       _isLoading
                           ? const CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
@@ -226,18 +213,15 @@ class _LoginScreen16State extends State<LoginScreen16> {
                             ),
                           )
                           : ElevatedButton(
-                            onPressed: _login, // Call the _login method
+                            onPressed: _register,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color.fromARGB(
                                 255,
                                 180,
                                 154,
-                                129, // Your desired gold/brownish color
+                                129,
                               ),
-                              minimumSize: const Size(
-                                double.infinity,
-                                50,
-                              ), // Full width button
+                              minimumSize: const Size(double.infinity, 50),
                               elevation: 6,
                               shadowColor: Colors.black45,
                               shape: RoundedRectangleBorder(
@@ -245,31 +229,43 @@ class _LoginScreen16State extends State<LoginScreen16> {
                               ),
                             ),
                             child: Text(
-                              'Login',
+                              'Register',
                               style: GoogleFonts.playfairDisplay(
                                 fontSize: 18,
-                                color:
-                                    Colors.black, // Text color for the button
+                                color: Colors.black,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-
                       const SizedBox(height: 12),
-
-                      // Sign up text button
                       TextButton(
                         onPressed: () {
-                          // Navigate to the registration screen
-                          // Ensure this route '/register16' is defined in your MaterialApp's routes
-                          Navigator.pushNamed(context, '/register16');
+                          Navigator.pop(context);
                         },
-                        child: Text(
-                          'Don\'t have an account? Signup',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.85),
-                            fontStyle: FontStyle.italic,
-                            fontSize: 14,
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'Already have an account? ',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.85),
+                              fontStyle: FontStyle.italic,
+                              fontSize: 14,
+                            ),
+                            children: <TextSpan>[
+                              TextSpan(
+                                text: 'Login',
+                                style: TextStyle(
+                                  color: const Color.fromARGB(
+                                    255,
+                                    180,
+                                    154,
+                                    129,
+                                  ),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -284,21 +280,22 @@ class _LoginScreen16State extends State<LoginScreen16> {
     );
   }
 
-  // Helper widget for building text fields (uses TextFormField for validation)
   Widget _buildTextField(
     String hint, {
     TextEditingController? controller,
     bool isPassword = false,
     TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator, // Validator function for input
+    String? Function(String?)? validator,
+    VoidCallback? toggleVisibility,
+    bool isPasswordType = false,
+    bool isCurrentPasswordVisible = false,
   }) {
     return TextFormField(
-      // Changed to TextFormField for validation capabilities
       controller: controller,
       style: const TextStyle(color: Colors.white),
       obscureText: isPassword,
       keyboardType: keyboardType,
-      validator: validator, // Assign the validator function
+      validator: validator,
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: Colors.white54),
@@ -309,32 +306,38 @@ class _LoginScreen16State extends State<LoginScreen16> {
           borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          // Default border style when enabled
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          // Border style when focused
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(
             color: Color.fromARGB(255, 180, 154, 129),
             width: 2,
-          ), // Highlight with accent color
+          ),
         ),
         errorBorder: OutlineInputBorder(
-          // Border style when validation error
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.red, width: 2),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          // Border style when focused with error
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.red, width: 2),
         ),
-        errorStyle: const TextStyle(
-          color: Colors.redAccent,
-          fontSize: 12,
-        ), // Style for error text
+        errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
+
+        suffixIcon:
+            isPasswordType
+                ? IconButton(
+                  icon: Icon(
+                    isCurrentPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: Colors.white54,
+                  ),
+                  onPressed: toggleVisibility,
+                )
+                : null,
       ),
     );
   }

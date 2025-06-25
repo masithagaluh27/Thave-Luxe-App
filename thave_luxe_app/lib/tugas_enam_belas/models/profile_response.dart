@@ -1,39 +1,42 @@
-// lib/tugas_lima_belas/Models/profile_response.dart
 import 'dart:convert';
 
 ProfileResponse profileResponseFromJson(String str) =>
     ProfileResponse.fromJson(json.decode(str));
+
 String profileResponseToJson(ProfileResponse data) =>
     json.encode(data.toJson());
 
 class ProfileResponse {
-  User? user;
-  String? message; // Sometimes a message is also returned
+  String? message;
+  User? user; // Changed from required to nullable
 
-  ProfileResponse({this.user, this.message});
+  ProfileResponse({this.message, this.user});
 
   factory ProfileResponse.fromJson(Map<String, dynamic> json) =>
       ProfileResponse(
-        user: json["user"] == null ? null : User.fromJson(json["user"]),
         message: json["message"],
+        user: json["user"] == null ? null : User.fromJson(json["user"]),
       );
 
-  Map<String, dynamic> toJson() => {"user": user?.toJson(), "message": message};
+  Map<String, dynamic> toJson() => {"message": message, "user": user?.toJson()};
 }
 
 class User {
-  int? id;
-  String? name;
-  String? email;
-  String? phone; // Assuming phone might be part of profile
-  String? address; // Assuming address might be part of profile
-  DateTime? createdAt;
-  DateTime? updatedAt;
+  int? id; // Made nullable
+  String? name; // Made nullable, though usually required for profile
+  String? email; // Made nullable, though usually required for profile
+  dynamic
+  emailVerifiedAt; // Made nullable (dynamic to handle null or date string)
+  String? phone; // Made nullable
+  String? address; // Made nullable
+  DateTime? createdAt; // Made nullable
+  DateTime? updatedAt; // Made nullable
 
   User({
     this.id,
     this.name,
     this.email,
+    this.emailVerifiedAt,
     this.phone,
     this.address,
     this.createdAt,
@@ -44,6 +47,8 @@ class User {
     id: json["id"],
     name: json["name"],
     email: json["email"],
+    emailVerifiedAt:
+        json["email_verified_at"], // This will now correctly handle null
     phone: json["phone"],
     address: json["address"],
     createdAt:
@@ -56,6 +61,7 @@ class User {
     "id": id,
     "name": name,
     "email": email,
+    "email_verified_at": emailVerifiedAt,
     "phone": phone,
     "address": address,
     "created_at": createdAt?.toIso8601String(),
