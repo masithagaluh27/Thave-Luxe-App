@@ -1,42 +1,47 @@
 import 'dart:convert';
 
+// Function to parse JSON string into ProfileResponse object
 ProfileResponse profileResponseFromJson(String str) =>
     ProfileResponse.fromJson(json.decode(str));
 
+// Function to convert ProfileResponse object to JSON string
 String profileResponseToJson(ProfileResponse data) =>
     json.encode(data.toJson());
 
 class ProfileResponse {
-  String? message;
-  User? user; // Changed from required to nullable
+  final String? message;
+  final User? data; // Single User object
+  final String? error; // For error messages
 
-  ProfileResponse({this.message, this.user});
+  ProfileResponse({this.message, this.data, this.error});
 
   factory ProfileResponse.fromJson(Map<String, dynamic> json) =>
       ProfileResponse(
         message: json["message"],
-        user: json["user"] == null ? null : User.fromJson(json["user"]),
+        data: json["data"] == null ? null : User.fromJson(json["data"]),
+        error: json["error"],
       );
 
-  Map<String, dynamic> toJson() => {"message": message, "user": user?.toJson()};
+  Map<String, dynamic> toJson() => {
+    "message": message,
+    "data": data?.toJson(),
+    "error": error,
+  };
 }
 
 class User {
-  int? id; // Made nullable
-  String? name; // Made nullable, though usually required for profile
-  String? email; // Made nullable, though usually required for profile
-  dynamic
-  emailVerifiedAt; // Made nullable (dynamic to handle null or date string)
-  String? phone; // Made nullable
-  String? address; // Made nullable
-  DateTime? createdAt; // Made nullable
-  DateTime? updatedAt; // Made nullable
+  final int? id;
+  final String? name;
+  final String? email;
+  final String? phone; // Assuming API provides phone
+  final String? address; // Assuming API provides address
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   User({
     this.id,
     this.name,
     this.email,
-    this.emailVerifiedAt,
     this.phone,
     this.address,
     this.createdAt,
@@ -47,10 +52,8 @@ class User {
     id: json["id"],
     name: json["name"],
     email: json["email"],
-    emailVerifiedAt:
-        json["email_verified_at"], // This will now correctly handle null
-    phone: json["phone"],
-    address: json["address"],
+    phone: json["phone"], // Map from JSON
+    address: json["address"], // Map from JSON
     createdAt:
         json["created_at"] == null ? null : DateTime.parse(json["created_at"]),
     updatedAt:
@@ -61,10 +64,22 @@ class User {
     "id": id,
     "name": name,
     "email": email,
-    "email_verified_at": emailVerifiedAt,
     "phone": phone,
     "address": address,
     "created_at": createdAt?.toIso8601String(),
     "updated_at": updatedAt?.toIso8601String(),
   };
+
+  // Helper method to create a copy with new values (useful for local state updates)
+  User copyWith({String? name, String? email, String? phone, String? address}) {
+    return User(
+      id: id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      phone: phone ?? this.phone,
+      address: address ?? this.address,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+    );
+  }
 }

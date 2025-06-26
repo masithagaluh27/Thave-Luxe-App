@@ -88,7 +88,4 @@ List<Product> productListFromJson(String str) =>
 String productListToJson(List<Product> data) =>
     json.encode(List<dynamic>.from(data.map((x) => x.toJson())));
 
-// You would likely use ProductResponse with data being List<Product> for "GET Daftar Produk"
-// Example usage:
-// ProductResponse productListResponse = ProductResponse.fromJson(response.body);
-// List<Product> products = List<Product>.from(productListResponse.data.map((x) => Product.fromJson(x)));
+

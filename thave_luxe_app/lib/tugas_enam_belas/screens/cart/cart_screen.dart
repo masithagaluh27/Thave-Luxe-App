@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart'; // Ensure this path is correct
-import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart'; // Assuming Product model is defined here
+import 'package:thave_luxe_app/tugas_enam_belas/api/cart_provider.dart'; // Import the new CartProvider
+import 'package:thave_luxe_app/tugas_enam_belas/models/cart_list_response.dart'; // Import CartListResponse which defines CartItem
+import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/checkout_detail_screen.dart';
 
 class CartScreen16 extends StatefulWidget {
   const CartScreen16({super.key});
@@ -12,60 +14,47 @@ class CartScreen16 extends StatefulWidget {
 }
 
 class _CartScreen16State extends State<CartScreen16> {
-  List<CartItem> _cartItems = [];
+  final CartProvider _cartProvider = CartProvider(); // Instantiate CartProvider
+  List<CartItem> _cartItems = []; // Use CartItem model
+  bool _isLoading = true; // State for loading indicator
+  String? _errorMessage; // State for error messages
 
   @override
   void initState() {
     super.initState();
-    _loadMockCartItems(); // Load some dummy data when the screen initializes
+    _fetchCartItems(); // Fetch real data when the screen initializes
   }
 
-  // Simulates loading cart items (replace with actual data fetching in production)
-  void _loadMockCartItems() {
+  // Fetches cart items from the API
+  Future<void> _fetchCartItems() async {
     setState(() {
-      _cartItems = [
-        CartItem(
-          product: Product(
-            id: 1,
-            name: "Classic Diamond Ring 18K White Gold",
-            description:
-                "An exquisite engagement ring featuring a brilliant-cut diamond.",
-            price: 7500000000,
-            // imageUrl: 'https://placehold.co/100x100/1e1e1e/b49a81?text=Ring' // Example if you had image URLs
-          ),
-          quantity: 1,
-        ),
-        CartItem(
-          product: Product(
-            id: 2,
-            name: "Midnight Sapphire Drop Necklace",
-            description:
-                "A breathtaking necklace adorned with a deep blue sapphire pendant.",
-            price: 1200000000,
-            // imageUrl: 'https://placehold.co/100x100/1e1e1e/b49a81?text=Necklace'
-          ),
-          quantity: 2,
-        ),
-        CartItem(
-          product: Product(
-            id: 3,
-            name: "Artisan Gold Chronograph Watch",
-            description:
-                "A luxury timepiece with intricate mechanical details and a polished gold finish.",
-            price: 5000000000,
-            // imageUrl: 'https://placehold.co/100x100/1e1e1e/b49a81?text=Watch'
-          ),
-          quantity: 1,
-        ),
-      ];
+      _isLoading = true;
+      _errorMessage = null; // Clear previous errors
     });
+
+    try {
+      final cartListResponse = await _cartProvider.getCart();
+      setState(() {
+        _cartItems =
+            cartListResponse; // CartProvider.getCart returns List<CartItem> directly now
+      });
+    } on Exception catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   // Calculates the total price of all items in the cart
   double _calculateTotalPrice() {
     return _cartItems.fold(
       0.0,
-      (sum, item) => sum + (item.product.price! * item.quantity),
+      // Safely access product price, defaulting to 0 if product or price is null
+      (sum, item) => sum + (item.product?.price ?? 0) * (item.quantity ?? 0),
     );
   }
 
@@ -74,7 +63,12 @@ class _CartScreen16State extends State<CartScreen16> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text(
+            message,
+            style: GoogleFonts.montserrat(
+              color: AppColors.lightText,
+            ), // Use lightText for SnackBar content
+          ),
           backgroundColor: color,
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating, // Makes it float above content
@@ -84,36 +78,113 @@ class _CartScreen16State extends State<CartScreen16> {
     }
   }
 
-  // Updates the quantity of a specific product in the cart
-  void _updateQuantity(int productId, int delta) {
-    setState(() {
-      final index = _cartItems.indexWhere(
-        (item) => item.product.id == productId,
+  Future<void> _updateQuantity(int productInCartId, int delta) async {
+    // Find the item in the current local cart list using product's ID
+    final existingCartItemIndex = _cartItems.indexWhere(
+      (item) =>
+          item.product?.id == productInCartId, // Corrected to item.product?.id
+    );
+    CartItem? currentItem;
+    if (existingCartItemIndex != -1) {
+      currentItem = _cartItems[existingCartItemIndex];
+    }
+
+    // Ensure we have a valid current item, product, and product ID before proceeding
+    if (currentItem == null ||
+        currentItem.product?.id == null ||
+        currentItem.quantity == null) {
+      _showSnackBar(
+        "Invalid cart item data for quantity update.",
+        AppColors.redAccent,
       );
-      if (index != -1) {
-        _cartItems[index].quantity += delta;
-        if (_cartItems[index].quantity <= 0) {
-          _cartItems.removeAt(
-            index,
-          ); // Remove item if quantity drops to 0 or less
+      return;
+    }
+
+    final newQuantity =
+        (currentItem.quantity!) + delta; // quantity is nullable, so assert
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+          ),
+        );
+      },
+    );
+
+    try {
+      if (newQuantity <= 0) {
+        // If new quantity is zero or less, delete the item from the cart
+        if (currentItem.id != null) {
+          // Check if cart item ID is not null
+          await _cartProvider.deleteFromCart(cartItemId: currentItem.id!);
           _showSnackBar("Item removed from cart.", AppColors.redAccent);
         } else {
-          _showSnackBar("Quantity updated.", AppColors.blue);
+          _showSnackBar(
+            "Cannot remove item: Cart item ID is null.", // More specific message
+            AppColors.redAccent,
+          );
         }
+      } else {
+        // If new quantity is positive, update it via addToCart
+        await _cartProvider.addToCart(
+          productId:
+              currentItem.product!.id!, // Use the product's ID for the API call
+          quantity: newQuantity,
+        );
+        _showSnackBar("Quantity updated.", AppColors.blue);
       }
-    });
+      // Always re-fetch the cart to ensure UI is in sync with backend
+      await _fetchCartItems();
+    } on Exception catch (e) {
+      _showSnackBar(
+        'Failed to update quantity: ${e.toString().replaceFirst('Exception: ', '')}',
+        AppColors.redAccent,
+      );
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop(); // Dismiss loading dialog
+      }
+    }
   }
 
-  // Removes a specific item completely from the cart
-  void _removeItem(int productId) {
-    setState(() {
-      _cartItems.removeWhere((item) => item.product.id == productId);
+  // Removes a specific item completely from the cart via API
+  Future<void> _removeItem(int cartItemId) async {
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+          ),
+        );
+      },
+    );
+
+    try {
+      await _cartProvider.deleteFromCart(cartItemId: cartItemId);
       _showSnackBar("Item removed from cart.", AppColors.redAccent);
-    });
+      await _fetchCartItems(); // Re-fetch cart after deletion
+    } on Exception catch (e) {
+      _showSnackBar(
+        'Failed to remove item: ${e.toString().replaceFirst('Exception: ', '')}',
+        AppColors.redAccent,
+      );
+    } finally {
+      if (mounted) {
+        Navigator.of(context).pop(); // Dismiss loading dialog
+      }
+    }
   }
 
-  // Placeholder for checkout functionality
-  void _checkout() {
+  // Performs checkout via API
+  Future<void> _checkout() async {
     if (_cartItems.isEmpty) {
       _showSnackBar(
         "Your cart is empty. Add items to checkout!",
@@ -121,47 +192,70 @@ class _CartScreen16State extends State<CartScreen16> {
       );
       return;
     }
-    _showSnackBar(
-      "Proceeding to checkout for total: Rp ${_calculateTotalPrice().toStringAsFixed(0)}",
-      AppColors.primaryGold,
+
+    // Show loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+          ),
+        );
+      },
     );
-    // TODO: Implement actual checkout process (e.g., navigate to payment screen, process order)
-    // Navigator.pushNamed(context, CheckoutScreen.id);
+
+    try {
+      final response = await _cartProvider.checkout();
+      _showSnackBar(
+        response.message ?? "Checkout successful!",
+        AppColors.green,
+      );
+      if (mounted) {
+        Navigator.of(context).pop();
+        Navigator.pushReplacementNamed(context, CheckoutScreen16.id);
+      }
+      setState(() {
+        _cartItems = []; // Clear cart after successful checkout
+      });
+    } on Exception catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop(); // Dismiss loading dialog
+        _showSnackBar(
+          'Checkout failed: ${e.toString().replaceFirst('Exception: ', '')}',
+          AppColors.redAccent,
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          AppColors.darkBackground, // Use dark background for luxury feel
+      backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
         title: Text(
           'Your Cart',
           style: GoogleFonts.playfairDisplay(
-            // Elegant font for the title
             fontWeight: FontWeight.bold,
             color: AppColors.lightText,
           ),
         ),
         centerTitle: true,
         backgroundColor: AppColors.darkBackground,
-        elevation: 0, // No shadow for a sleek look
+        elevation: 0,
         leading: IconButton(
-          // Back button for navigation
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
           onPressed: () {
-            Navigator.pop(context); // Go back to the previous screen
+            Navigator.pop(context);
           },
         ),
       ),
       body: Container(
-        // Luxurious gradient background
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppColors.darkBackground,
-              AppColors.gradientDark, // Slightly lighter dark for subtle depth
-            ],
+            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -170,35 +264,76 @@ class _CartScreen16State extends State<CartScreen16> {
           children: [
             Expanded(
               child:
-                  _cartItems
-                          .isEmpty // Display message if cart is empty
+                  _isLoading
                       ? Center(
-                        child: Text(
-                          'Your cart is empty. Start adding some luxury items!',
-                          style: GoogleFonts.playfairDisplay(
-                            color: AppColors.subtleGrey,
-                            fontSize: 18,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppColors.primaryGold,
                           ),
-                          textAlign: TextAlign.center,
+                        ),
+                      )
+                      : _errorMessage != null
+                      ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Error: $_errorMessage',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AppColors.redAccent,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: _fetchCartItems,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryGold,
+                                  foregroundColor: AppColors.darkBackground,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Retry',
+                                  style: GoogleFonts.playfairDisplay(
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      : _cartItems.isEmpty
+                      ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                          child: Text(
+                            'Your cart is empty. Start adding some luxury items!',
+                            style: GoogleFonts.playfairDisplay(
+                              color: AppColors.subtleGrey,
+                              fontSize: 18,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       )
                       : ListView.builder(
-                        // Display cart items in a scrollable list
                         padding: const EdgeInsets.all(16.0),
                         itemCount: _cartItems.length,
                         itemBuilder: (context, index) {
                           final item = _cartItems[index];
-                          return _buildCartItemCard(
-                            item,
-                          ); // Build each cart item card
+                          return _buildCartItemCard(item);
                         },
                       ),
             ),
-            // Cart Summary and Checkout Button always at the bottom
-            // Only show if there are items in the cart
             _cartItems.isNotEmpty
                 ? _buildCartSummary()
-                : const SizedBox.shrink(), // Hides the summary if cart is empty
+                : const SizedBox.shrink(),
           ],
         ),
       ),
@@ -207,58 +342,52 @@ class _CartScreen16State extends State<CartScreen16> {
 
   // Helper widget to build each individual cart item card
   Widget _buildCartItemCard(CartItem item) {
+    // Add null checks for crucial properties before rendering the card.
+    // If product, product ID, product name, or product price are null,
+    // we can't display this item correctly, so show a placeholder/error card.
+    if (item.product == null ||
+        item.product!.id == null ||
+        item.product!.name == null ||
+        item.product!.price == null ||
+        item.quantity == null) {
+      return Card(
+        elevation: 5,
+        color: AppColors.cardBackgroundLight,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Text(
+            'Invalid cart item data (missing product details). Please refresh.',
+            style: GoogleFonts.montserrat(color: AppColors.redAccent),
+          ),
+        ),
+      );
+    }
+
     return Card(
-      elevation: 5, // Subtle shadow for depth
-      color: AppColors.cardBackground, // Dark card background
-      margin: const EdgeInsets.symmetric(
-        vertical: 8.0,
-      ), // Spacing between cards
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ), // Rounded corners
+      elevation: 5,
+      color: AppColors.cardBackgroundLight,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16.0),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Image Placeholder
+            // Product Image Placeholder or Network Image
             Container(
-              width: 90, // Larger image placeholder
-              height: 90,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
-                color: AppColors.imagePlaceholderBackground,
-                borderRadius: BorderRadius.circular(10),
-                // If you had image URLs uncomment this section:
-                // image: item.product.imageUrl != null && item.product.imageUrl!.isNotEmpty
-                //     ? DecorationImage(
-                //         image: NetworkImage(item.product.imageUrl!),
-                //         fit: BoxFit.cover,
-                //       )
-                //     : null,
+                color: AppColors.imagePlaceholderLight,
+                borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              // If you were displaying network images, you'd use this:
-              // child: item.product.imageUrl != null && item.product.imageUrl!.isNotEmpty
-              //     ? ClipRRect(
-              //         borderRadius: BorderRadius.circular(10),
-              //         child: Image.network(
-              //           item.product.imageUrl!,
-              //           width: 90,
-              //           height: 90,
-              //           fit: BoxFit.cover,
-              //           errorBuilder: (context, error, stackTrace) => const Icon(
-              //             Icons.image_not_supported_outlined,
-              //             color: AppColors.subtleGrey,
-              //             size: 40,
-              //           ),
-              //         ),
-              //       )
-              //     :
-              // This icon will always be shown now:
               child: const Icon(
                 Icons.shopping_bag_outlined,
                 color: AppColors.subtleGrey,
-                size: 45,
+                size: 50,
               ),
             ),
             const SizedBox(width: 16),
@@ -267,57 +396,69 @@ class _CartScreen16State extends State<CartScreen16> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    item.product.name ?? 'Unknown Product',
+                    item.product!.name!, // Assert non-null after check above
                     style: GoogleFonts.playfairDisplay(
-                      color: AppColors.lightText,
-                      fontSize: 17, // Slightly larger font for product name
+                      color: AppColors.textDark,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   Text(
-                    'Price: Rp ${item.product.price?.toStringAsFixed(0) ?? 'N/A'}', // Display individual item price
-                    style: GoogleFonts.playfairDisplay(
-                      color:
-                          AppColors
-                              .subtleGrey, // Subtle grey for individual price
-                      fontSize: 13,
+                    'Price: Rp ${item.product!.price!.toStringAsFixed(0)}', // Assert non-null
+                    style: GoogleFonts.montserrat(
+                      color: AppColors.subtleText,
+                      fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      // Quantity control buttons
                       _buildQuantityButton(
                         Icons.remove,
-                        () => _updateQuantity(item.product.id!, -1),
+                        () => _updateQuantity(
+                          item.product!.id!,
+                          -1,
+                        ), // Corrected: item.product!.id!
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
                         child: Text(
                           item.quantity.toString(),
-                          style: GoogleFonts.playfairDisplay(
-                            color: AppColors.lightText,
-                            fontSize: 17,
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.textDark,
+                            fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                       _buildQuantityButton(
                         Icons.add,
-                        () => _updateQuantity(item.product.id!, 1),
+                        () => _updateQuantity(
+                          item.product!.id!,
+                          1,
+                        ), // Corrected: item.product!.id!
                       ),
-                      const Spacer(), // Pushes the remove button to the right
-                      // Remove button
+                      const Spacer(),
                       IconButton(
                         icon: const Icon(
                           Icons.delete_outline,
                           color: AppColors.redAccent,
-                          size: 24,
+                          size: 28,
                         ),
-                        onPressed: () => _removeItem(item.product.id!),
+                        onPressed: () {
+                          if (item.id != null) {
+                            // Check item.id before attempting removal
+                            _removeItem(item.id!);
+                          } else {
+                            _showSnackBar(
+                              "Cannot remove item: Cart item ID is null.",
+                              AppColors.redAccent,
+                            );
+                          }
+                        },
                         tooltip: 'Remove Item',
                       ),
                     ],
@@ -334,22 +475,20 @@ class _CartScreen16State extends State<CartScreen16> {
   // Reusable widget for quantity control buttons
   Widget _buildQuantityButton(IconData icon, VoidCallback onPressed) {
     return InkWell(
-      // Using InkWell for a custom button feel with ripple effect
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Container(
-        width: 38,
-        height: 38,
+        width: 42,
+        height: 42,
         decoration: BoxDecoration(
-          color: AppColors.primaryGold.withOpacity(
-            0.1,
-          ), // Very subtle gold tint
-          borderRadius: BorderRadius.circular(8),
+          color: AppColors.primaryGold.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: AppColors.primaryGold.withOpacity(0.3),
-          ), // Light gold border
+            color: AppColors.primaryGold.withOpacity(0.4),
+            width: 1.5,
+          ),
         ),
-        child: Icon(icon, color: AppColors.primaryGold, size: 20),
+        child: Icon(icon, color: AppColors.primaryGold, size: 22),
       ),
     );
   }
@@ -357,67 +496,61 @@ class _CartScreen16State extends State<CartScreen16> {
   // Widget for displaying the cart summary and checkout button at the bottom
   Widget _buildCartSummary() {
     return Container(
-      padding: const EdgeInsets.all(20.0), // More padding for a premium feel
+      padding: const EdgeInsets.all(25.0),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground, // Matches card background
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(20),
-        ), // Rounded top corners
+        color: AppColors.darkBackground,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         boxShadow: [
-          // Subtle shadow for elevation
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
+            color: Colors.black.withOpacity(0.5),
             spreadRadius: 5,
-            blurRadius: 15,
-            offset: const Offset(0, -5), // Shadow pointing upwards
+            blurRadius: 20,
+            offset: const Offset(0, -8),
           ),
         ],
       ),
       child: Column(
-        mainAxisSize: MainAxisSize.min, // Takes minimum space
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Grand Total:', // More formal label
+                'Grand Total:',
                 style: GoogleFonts.playfairDisplay(
                   color: AppColors.lightText,
-                  fontSize: 22, // Larger total text
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
-                'Rp ${_calculateTotalPrice().toStringAsFixed(0)}', // Formatted total price
+                'Rp ${_calculateTotalPrice().toStringAsFixed(0)}',
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.primaryGold, // Prominent gold for total
-                  fontSize: 26, // Even larger for total price
+                  color: AppColors.primaryGold,
+                  fontSize: 30,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 25), // More spacing
+          const SizedBox(height: 30),
           SizedBox(
-            width: double.infinity, // Button spans full width
+            width: double.infinity,
             child: ElevatedButton(
               onPressed: _checkout,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGold, // Solid gold button
-                foregroundColor: AppColors.darkBackground, // Dark text on gold
+                backgroundColor: AppColors.primaryGold,
+                foregroundColor: AppColors.darkBackground,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    14,
-                  ), // More rounded corners
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 18,
-                ), // Taller button
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                elevation: 8,
               ),
               child: Text(
                 'Proceed to Checkout',
                 style: GoogleFonts.playfairDisplay(
-                  fontSize: 19, // Larger button text
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -427,14 +560,4 @@ class _CartScreen16State extends State<CartScreen16> {
       ),
     );
   }
-}
-
-// A simple model for items in the cart.
-// In a real app, you might have a more complex cart item structure
-// that includes product details and quantity.
-class CartItem {
-  final Product product; // The product associated with this cart item
-  int quantity; // The quantity of this product in the cart
-
-  CartItem({required this.product, this.quantity = 1}); // Constructor
 }

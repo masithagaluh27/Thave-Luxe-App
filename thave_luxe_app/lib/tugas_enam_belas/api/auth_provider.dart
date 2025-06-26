@@ -1,11 +1,10 @@
 import 'dart:convert';
-
 import 'package:http/http.dart' as http;
 import 'package:thave_luxe_app/helper/preference_handler.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/endpoint.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/auth_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/error_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/profile_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/auth_response.dart'; // Assuming this exists
+import 'package:thave_luxe_app/tugas_enam_belas/models/error_response.dart'; // Assuming this exists
+import 'package:thave_luxe_app/tugas_enam_belas/models/profile_response.dart'; // Assuming this exists
 
 class AuthProvider {
   // Register User
@@ -31,7 +30,9 @@ class AuthProvider {
     if (response.statusCode == 201 || response.statusCode == 200) {
       final authResponse = authResponseFromJson(response.body);
       if (authResponse.data?.token != null) {
-        await PreferenceHandler.setToken(authResponse.data!.token!);
+        await PreferenceHandler.setToken(
+          authResponse.data!.token!,
+        ); // Token saved here
       }
       return authResponse;
     } else if (response.statusCode == 422) {
@@ -61,7 +62,13 @@ class AuthProvider {
     if (response.statusCode == 201 || response.statusCode == 200) {
       final authResponse = authResponseFromJson(response.body);
       if (authResponse.data?.token != null) {
-        await PreferenceHandler.setToken(authResponse.data!.token!);
+        await PreferenceHandler.setToken(
+          authResponse.data!.token!,
+        ); // Token saved here
+        // Consider saving user name and email to preferences here as well after successful login
+        // if login_response returns them, similar to my previous `AuthProvider`
+        // e.g., await PreferenceHandler.setUserName(authResponse.data!.user?.name ?? '');
+        // e.g., await PreferenceHandler.setUserEmail(authResponse.data!.user?.email ?? '');
       }
       return authResponse;
     } else if (response.statusCode == 422) {
@@ -78,7 +85,7 @@ class AuthProvider {
 
   // Get Profile
   Future<ProfileResponse> getProfile() async {
-    String? token = await PreferenceHandler.getToken();
+    String? token = await PreferenceHandler.getToken(); // Token retrieved here
     if (token == null) {
       throw Exception("Authentication token not found. Please log in.");
     }
@@ -94,6 +101,8 @@ class AuthProvider {
     if (response.statusCode == 200) {
       return profileResponseFromJson(response.body);
     } else if (response.statusCode == 401) {
+      // Clear token if server explicitly says 401
+      await PreferenceHandler.clearToken();
       throw Exception(
         "Unauthorized: Your session has expired. Please log in again.",
       );
@@ -104,19 +113,17 @@ class AuthProvider {
     }
   }
 
-  // Update Profile - Now accepts optional phone and address, and returns ProfileResponse
+  // Update Profile
   Future<ProfileResponse> updateProfile({
-    // Changed return type to ProfileResponse
     required String name,
-    String? phone, // Added optional phone
-    String? address, // Added optional address
+    String? phone,
+    String? address,
   }) async {
     final token = await PreferenceHandler.getToken();
     if (token == null) {
       throw Exception("Authentication token not found. Please log in.");
     }
 
-    // Build the body dynamically to include only non-null fields
     Map<String, dynamic> body = {'name': name};
     if (phone != null && phone.isNotEmpty) {
       body['phone'] = phone;
@@ -131,18 +138,16 @@ class AuthProvider {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode(body), // Send dynamic body
+      body: jsonEncode(body),
     );
 
     print('Update Profile Response Status: ${response.statusCode}');
     print('Update Profile Response Body: ${response.body}');
 
     if (response.statusCode == 200) {
-      // Assuming successful update returns the updated profile
-      return profileResponseFromJson(
-        response.body,
-      ); // Return the updated ProfileResponse
+      return profileResponseFromJson(response.body);
     } else if (response.statusCode == 401) {
+      await PreferenceHandler.clearToken();
       throw Exception(
         "Unauthorized: Your session has expired. Please log in again.",
       );
@@ -163,7 +168,18 @@ class AuthProvider {
 
   // Add a logout method to clear the token locally
   Future<void> logout() async {
-    await PreferenceHandler.clearToken();
+    // Optionally call server logout endpoint here if your API has one
+    // try {
+    //   final token = await PreferenceHandler.getToken();
+    //   if (token != null) {
+    //     await http.post(Uri.parse(Endpoint.logout), headers: {'Authorization': 'Bearer $token'});
+    //   }
+    // } catch (e) {
+    //   print('Server logout failed: $e');
+    //   // Continue with local clear even if server logout fails
+    // }
+    await PreferenceHandler.clearToken(); // Always clear local token
+    await PreferenceHandler.clearUserDetails(); // Clear other user details
     print("User logged out locally.");
   }
 }

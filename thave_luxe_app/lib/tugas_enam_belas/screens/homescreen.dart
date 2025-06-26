@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/product_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/add_to_cart_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/brands/brand_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/cart_screen.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/favorite/favorite_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/profile/profile_screen.dart';
 
 class HomeScreen16 extends StatefulWidget {
@@ -16,37 +17,80 @@ class HomeScreen16 extends StatefulWidget {
 }
 
 class _HomeScreen16State extends State<HomeScreen16> {
-  final ProductProvider _productProvider = ProductProvider();
-  List<Product> _allProducts = []; // Stores the complete list of products
-  List<Product> _products =
-      []; // The list currently displayed (can be filtered)
+  final ApiProvider _productProvider = ApiProvider();
+  List<Product> _allProducts = [];
+  List<Product> _products = [];
   bool _isLoading = true;
   String? _errorMessage;
   final TextEditingController _searchController = TextEditingController();
 
-  int _selectedIndex = 0; // For Bottom Navigation Bar
+  int _selectedIndex = 0;
+  int _currentBannerIndex = 0;
+  final PageController _pageController = PageController(initialPage: 0);
+
+  final List<Map<String, dynamic>> _banners = [
+    {
+      'title': 'Up to 50% Off!',
+      'subtitle': '& other Stories',
+      'image': 'assets/images/banner1.jpg',
+      'bgColor': AppColors.imagePlaceholderLight,
+      'textColor': AppColors.textDark,
+    },
+    {
+      'title': 'New Arrivals',
+      'subtitle': 'Explore the latest trends',
+      'image':
+          'assets/images/banner2.jpg', // Placeholder, replace with actual assets
+      'bgColor': AppColors.primaryGold.withOpacity(0.2),
+      'textColor': AppColors.textDark,
+    },
+    {
+      'title': 'Limited Edition',
+      'subtitle': 'Don\'t miss out!',
+      'image':
+          'assets/images/banner3.jpg', // Placeholder, replace with actual assets
+      'bgColor': AppColors.cardBackgroundLight,
+      'textColor': AppColors.textDark,
+    },
+  ];
 
   // Changed to Brands list
   final List<String> _brands = [
-    'Nike',
-    'Adidas',
-    'Puma',
-    'Gucci',
+    'Ekin',
+    'Adidos',
+    'Pamu',
+    'Guccai',
     'Prada',
     'Louis Vuitton',
     'Chanel',
     'Fila',
+    'Vercace',
+    'Burbrebry',
+    'calvin clein',
+    'Ralph Lauren',
   ];
 
   @override
   void initState() {
     super.initState();
     _fetchProducts(); // Fetch products when the screen initializes
+
+    //untuk gerak sendiri
+    // Future.delayed(Duration(seconds: 3), () {
+    //   if (mounted) {
+    //     _pageController.animateToPage(
+    //       (_currentBannerIndex + 1) % _banners.length,
+    //       duration: Duration(milliseconds: 500),
+    //       curve: Curves.easeIn,
+    //     );
+    //   }
+    // });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _pageController.dispose(); // Dispose the PageController
     super.dispose();
   }
 
@@ -99,46 +143,6 @@ class _HomeScreen16State extends State<HomeScreen16> {
     }
   }
 
-  // --- Add to Cart Logic ---
-  Future<void> _addToCart(int productId) async {
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
-            ),
-          );
-        },
-      );
-
-      final AddToCartResponse response = await _productProvider.addToCart(
-        productId: productId,
-        quantity: 1, // Assuming quantity of 1 for simplicity
-      );
-
-      if (mounted) {
-        Navigator.of(context).pop(); // Dismiss loading dialog
-        _showSnackBar(
-          response.message ?? "Product added to cart!",
-          AppColors.green,
-        );
-      }
-    } on Exception catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Dismiss loading dialog
-        print('Add to Cart Error: $e'); // Log the error for debugging
-        _showSnackBar(
-          e.toString().replaceFirst('Exception: ', ''),
-          AppColors.redAccent,
-        );
-      }
-    }
-  }
-
   // Helper method to show SnackBar messages
   void _showSnackBar(String message, Color color) {
     if (mounted) {
@@ -162,27 +166,28 @@ class _HomeScreen16State extends State<HomeScreen16> {
       _selectedIndex = index;
     });
 
-    // Handle navigation based on selected index
     switch (index) {
       case 0:
-        // Already on Home, do nothing or refresh
-        _showSnackBar('Home Tapped', AppColors.blue);
         break;
       case 1:
-        // Navigate to Categories/Brands screen (placeholder)
-        _showSnackBar('Brands Tapped', AppColors.blue);
+        // Navigate to Brands screen
+        Navigator.pushNamed(context, BrandsScreen16.id);
+
         break;
       case 2:
         // Navigate to Cart screen
         Navigator.pushNamed(context, CartScreen16.id);
+
         break;
       case 3:
-        // Navigate to Favorite screen (placeholder)
-        _showSnackBar('Favorite Tapped', AppColors.blue);
+        // Navigate to Favorite screen
+        Navigator.pushNamed(context, FavoriteScreen16.id);
+
         break;
       case 4:
         // Navigate to Profile screen
         Navigator.pushNamed(context, ProfileScreen16.id);
+
         break;
     }
   }
@@ -206,76 +211,19 @@ class _HomeScreen16State extends State<HomeScreen16> {
           builder: (BuildContext context) {
             return IconButton(
               icon: const Icon(
-                Icons.menu,
-                color: AppColors.textDark,
-              ), // Hamburger menu
+                Icons.notifications_outlined, // Changed to notification icon
+                color: AppColors.primaryGold,
+              ),
               onPressed: () {
-                Scaffold.of(
-                  context,
-                ).openDrawer(); // For a potential side drawer
+                _showSnackBar('Notifications soon!', AppColors.blue);
+                // Navigate to Notifications screen
               },
             );
           },
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.search,
-              color: AppColors.textDark,
-            ), // Search icon
-            onPressed: () {
-              // Now search has a function: filter products
-              _showSnackBar('Search icon tapped!', AppColors.blue);
-              // You could expand this to open a dedicated search UI
-            },
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_outlined, // Changed to notification icon
-              color: AppColors.primaryGold,
-            ),
-            onPressed: () {
-              _showSnackBar('Notifications Tapped!', AppColors.blue);
-              // Navigate to Notifications screen
-            },
-          ),
-        ],
+        actions: [],
       ),
-      drawer: Drawer(
-        // Placeholder for the side drawer
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              decoration: const BoxDecoration(color: AppColors.primaryGold),
-              child: Text(
-                'Menu',
-                style: GoogleFonts.playfairDisplay(
-                  color: AppColors.darkBackground,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.home),
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.pop(context); // Close the drawer
-                _onItemTapped(0); // Simulate tapping home in bottom nav
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.category),
-              title: const Text('Brands'), // Changed to Brands in drawer
-              onTap: () {
-                Navigator.pop(context);
-                _onItemTapped(1);
-              },
-            ),
-            // Add more drawer items as needed
-          ],
-        ),
-      ),
+
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -288,7 +236,6 @@ class _HomeScreen16State extends State<HomeScreen16> {
           ),
         ),
         child: RefreshIndicator(
-          // Keep RefreshIndicator for the whole scrollable content
           onRefresh: _fetchProducts,
           color: AppColors.primaryGold,
           child:
@@ -335,14 +282,11 @@ class _HomeScreen16State extends State<HomeScreen16> {
                     ),
                   )
                   : SingleChildScrollView(
-                    // Changed to SingleChildScrollView
-                    physics:
-                        const AlwaysScrollableScrollPhysics(), // Ensures it's always scrollable even if content is small
+                    physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start, // Align content to start
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // --- Search Bar ---
+                        // Search Bar
                         Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 16.0,
@@ -396,7 +340,7 @@ class _HomeScreen16State extends State<HomeScreen16> {
                             },
                           ),
                         ),
-                        // --- Brands Tabs (horizontal menu) ---
+                        // -Brands Tabs (horizontal menu)
                         SizedBox(
                           height: 50,
                           child: ListView.builder(
@@ -435,71 +379,97 @@ class _HomeScreen16State extends State<HomeScreen16> {
                         ),
                         const SizedBox(height: 15),
 
-                        // --- Main Banner/Carousel Placeholder (Card Slide) ---
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Container(
-                            height: 180, // Height for the banner
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: AppColors.imagePlaceholderBackground,
-                              borderRadius: BorderRadius.circular(15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
+                        // main banner
+                        SizedBox(
+                          height: 180,
+                          child: PageView.builder(
+                            controller: _pageController,
+                            itemCount: _banners.length,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentBannerIndex = index;
+                              });
+                            },
+                            itemBuilder: (context, index) {
+                              final banner = _banners[index];
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0,
                                 ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  'Up to 50% Off!',
-                                  style: GoogleFonts.playfairDisplay(
-                                    color: AppColors.textDark,
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  '& other Stories',
-                                  style: GoogleFonts.montserrat(
-                                    color: AppColors.subtleText,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                Row(
-                                  // Page indicators
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    3,
-                                    (index) => Container(
-                                      margin: const EdgeInsets.symmetric(
-                                        horizontal: 4.0,
+                                child: Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    color: banner['bgColor'],
+                                    borderRadius: BorderRadius.circular(15),
+                                    image:
+                                        banner['image'] != null
+                                            ? DecorationImage(
+                                              image: AssetImage(
+                                                banner['image'],
+                                              ),
+                                              fit: BoxFit.cover,
+                                              opacity: 0.6,
+                                            )
+                                            : null,
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 5),
                                       ),
-                                      width: 8.0,
-                                      height: 8.0,
-                                      decoration: BoxDecoration(
-                                        color:
-                                            index == 0
-                                                ? AppColors.primaryGold
-                                                : AppColors.subtleGrey,
-                                        shape: BoxShape.circle,
+                                    ],
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        banner['title'],
+                                        style: GoogleFonts.playfairDisplay(
+                                          color: banner['textColor'],
+                                          fontSize: 28,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
+                                      Text(
+                                        banner['subtitle'],
+                                        style: GoogleFonts.montserrat(
+                                          color: AppColors.subtleText,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                    ],
                                   ),
                                 ),
-                              ],
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(
+                            _banners.length,
+                            (index) => Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: 4.0,
+                              ),
+                              width: 8.0,
+                              height: 8.0,
+                              decoration: BoxDecoration(
+                                color:
+                                    _currentBannerIndex == index
+                                        ? AppColors.primaryGold
+                                        : AppColors.subtleGrey,
+                                shape: BoxShape.circle,
+                              ),
                             ),
                           ),
                         ),
                         const SizedBox(height: 25),
 
-                        // --- "You Might Like These" Section (Horizontal Products) ---
+                        //"You Might Like These" Section (Horizontal Products)
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16.0),
                           child: Text(
@@ -513,7 +483,7 @@ class _HomeScreen16State extends State<HomeScreen16> {
                         ),
                         const SizedBox(height: 15),
                         SizedBox(
-                          height: 280, // Height for horizontal product list
+                          height: 280,
                           child:
                               _products.isEmpty
                                   ? Center(
@@ -541,68 +511,8 @@ class _HomeScreen16State extends State<HomeScreen16> {
                                     },
                                   ),
                         ),
-                        const SizedBox(height: 25),
 
-                        // --- "Top Featured Brand To Grab!" Section ---
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Text(
-                            'Top Featured Brand To Grab!',
-                            style: GoogleFonts.playfairDisplay(
-                              color: AppColors.textDark,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 15),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Container(
-                            height: 150, // Height for brand banner
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryGold.withOpacity(
-                                0.2,
-                              ), // Light gold background
-                              borderRadius: BorderRadius.circular(15),
-                              image: const DecorationImage(
-                                image: AssetImage(
-                                  'assets/images/tommy_hilfiger_banner.png',
-                                ), // Placeholder image
-                                fit: BoxFit.cover,
-                                opacity: 0.6,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 5),
-                                ),
-                              ],
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'TOMMY HILFIGER',
-                              style: GoogleFonts.playfairDisplay(
-                                color:
-                                    AppColors
-                                        .textDark, // Dark text over light background
-                                fontSize: 30,
-                                fontWeight: FontWeight.bold,
-                                shadows: [
-                                  Shadow(
-                                    // Text shadow for better visibility
-                                    blurRadius: 5.0,
-                                    color: Colors.black.withOpacity(0.3),
-                                    offset: const Offset(2.0, 2.0),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 30), // Spacing at bottom
+                        const SizedBox(height: 30),
                       ],
                     ),
                   ),
@@ -611,10 +521,10 @@ class _HomeScreen16State extends State<HomeScreen16> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
-        selectedItemColor: AppColors.primaryGold, // Selected icon color
-        unselectedItemColor: AppColors.accentGrey, // Unselected icon color
-        backgroundColor: AppColors.backgroundLight, // Background of the bar
-        type: BottomNavigationBarType.fixed, // Ensures labels are always shown
+        selectedItemColor: AppColors.primaryGold,
+        unselectedItemColor: AppColors.accentGrey,
+        backgroundColor: AppColors.backgroundLight,
+        type: BottomNavigationBarType.fixed,
         selectedLabelStyle: GoogleFonts.montserrat(
           fontWeight: FontWeight.w600,
           fontSize: 12,
@@ -633,12 +543,12 @@ class _HomeScreen16State extends State<HomeScreen16> {
             label: 'Brands', // Changed label to Brands
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart_outlined),
+            icon: Icon(Icons.shopping_bag_outlined),
             label: 'Cart',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite_outline),
-            label: 'Favorite',
+            label: 'Wishlist',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),
@@ -649,13 +559,11 @@ class _HomeScreen16State extends State<HomeScreen16> {
     );
   }
 
-  // Widget to build individual product cards (adjusted for horizontal list)
   Widget _buildProductCard(Product product) {
     return SizedBox(
-      // Wrap in SizedBox to control width in horizontal list
-      width: 160, // Fixed width for horizontal cards
+      width: 160,
       child: Card(
-        elevation: 4, // Slightly less elevation for horizontal cards
+        elevation: 4,
         color: AppColors.cardBackgroundLight, // Use a lighter card background
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: InkWell(
@@ -708,10 +616,6 @@ class _HomeScreen16State extends State<HomeScreen16> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                // Removed the "Add to Cart" button from horizontal cards
-                // as Zalora often has it on detail page or a quick add option.
-                // You can add it back if needed, but it makes horizontal cards dense.
-                // If adding back, adjust card height to accommodate.
               ],
             ),
           ),

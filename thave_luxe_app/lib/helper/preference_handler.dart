@@ -1,27 +1,29 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PreferenceHandler {
-  static const String _tokenKey = 'auth_token';
+  static const String _tokenKey =
+      'auth_token'; // This is correct and consistent now
   static const String _userNameKey = 'user_name';
   static const String _userEmailKey = 'user_email';
-  // Removed phone and address keys
-  // static const String _userPhoneKey = 'user_phone';
-  // static const String _userAddressKey = 'user_address';
 
   // --- Token Operations ---
   static Future<void> setToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
+    print('PreferenceHandler: Token saved: $token'); // Added logging
   }
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_tokenKey);
+    final token = prefs.getString(_tokenKey);
+    print('PreferenceHandler: Token retrieved: $token'); // Added logging
+    return token;
   }
 
   static Future<void> clearToken() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
+    print('PreferenceHandler: Token cleared.'); // Added logging
   }
 
   // --- User Name Operations ---
@@ -51,14 +53,13 @@ class PreferenceHandler {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userNameKey);
     await prefs.remove(_userEmailKey);
-    // Removed clearing phone and address
-    // await prefs.remove(_userPhoneKey);
-    // await prefs.remove(_userAddressKey);
+    print('PreferenceHandler: User details cleared.'); // Added logging
   }
 
   // Clear all preferences (use with caution, only for full reset)
   static Future<void> clearAllPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
+    print('PreferenceHandler: All preferences cleared.'); // Added logging
   }
 }
