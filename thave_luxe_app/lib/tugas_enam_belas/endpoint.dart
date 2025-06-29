@@ -4,7 +4,7 @@ class Endpoint {
   static const String baseUrl = 'https://apptoko.mobileprojp.com/api';
   static const String register = '$baseUrl/register';
   static const String login = '$baseUrl/login';
-  static const String profile = '$baseUrl/user';
+  static const String profile = '$baseUrl/profile';
   static const String products = '$baseUrl/products';
   static const String getCart = '$baseUrl/products';
   static String productDetail(int id) =>

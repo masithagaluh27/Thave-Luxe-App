@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/auth_provider.dart'; // Corrected import path
-
+import 'package:thave_luxe_app/tugas_enam_belas/api/auth_provider.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/profile_response.dart';
 
 import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/admin_product_screen.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart'; // Ensure this model is correctly defined
+import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart';
 
 class ProfileScreen16 extends StatefulWidget {
   const ProfileScreen16({super.key});
@@ -20,20 +19,18 @@ class ProfileScreen16 extends StatefulWidget {
 class _ProfileScreen16State extends State<ProfileScreen16> {
   final AuthProvider _authProvider = AuthProvider();
 
-  AppUser? _userProfile; // Keep using User model for structure
-  bool _isLoading = true; // Set to true initially as we are fetching from API
+  AppUser? _userProfile;
+  bool _isLoading = true;
   String? _errorMessage;
 
-  // Check if the current user is the admin
   bool get _isAdminUser => _userProfile?.email == 'admin@gmail.com';
 
   @override
   void initState() {
     super.initState();
-    _fetchUserProfileFromAPI(); // Fetch profile from API on init
+    _fetchUserProfileFromAPI();
   }
 
-  // Fetch user profile from the API
   Future<void> _fetchUserProfileFromAPI() async {
     setState(() {
       _isLoading = true;
@@ -48,14 +45,13 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         });
       } else {
         _errorMessage = "Failed to load profile data. Please log in again.";
-        _navigateToLogin(); // Force re-login if profile data is null
+        _navigateToLogin();
       }
     } on Exception catch (e) {
       setState(() {
         _errorMessage =
             'Failed to load profile: ${e.toString().replaceFirst('Exception: ', '')}';
       });
-      // If unauthorized, navigate to login
       if (e.toString().contains('Unauthorized')) {
         _navigateToLogin();
       }
@@ -66,7 +62,6 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
     }
   }
 
-  // Handle user logout
   Future<void> _logout() async {
     showDialog(
       context: context,
@@ -81,15 +76,15 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
     );
 
     try {
-      await _authProvider.logout(); // Call the logout method from AuthProvider
+      await _authProvider.logout();
       if (mounted) {
-        Navigator.of(context).pop(); // Dismiss loading dialog
-        _navigateToLogin(); // Navigate to login screen
+        Navigator.of(context).pop();
+        _navigateToLogin();
         _showSnackBar('Logged out successfully!', AppColors.green);
       }
     } on Exception catch (e) {
       if (mounted) {
-        Navigator.of(context).pop(); // Dismiss loading dialog
+        Navigator.of(context).pop();
         _showSnackBar(
           'Logout failed: ${e.toString().replaceFirst('Exception: ', '')}',
           AppColors.redAccent,
@@ -116,7 +111,6 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
   }
 
   void _navigateToLogin() {
-    // Clear routes and push to login screen
     Navigator.pushNamedAndRemoveUntil(
       context,
       LoginScreen16.id,
@@ -203,7 +197,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
             Navigator.pop(context);
           },
         ),
-        actions: const [], // Changed to const []
+        actions: const [],
       ),
       extendBodyBehindAppBar: true,
       body: Container(
@@ -237,8 +231,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                           ),
                           const SizedBox(height: 20),
                           ElevatedButton(
-                            onPressed:
-                                _fetchUserProfileFromAPI, // Retry loading from API
+                            onPressed: _fetchUserProfileFromAPI,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryGold,
                               foregroundColor: AppColors.darkBackground,
@@ -256,9 +249,8 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                     ),
                   )
                   : ListView(
-                    // Changed from SingleChildScrollView
-                    physics:
-                        const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
+                    // This is the ListView handling scrolling
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20.0,
                       vertical: 15.0,
@@ -266,10 +258,10 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       top:
                           MediaQuery.of(context).padding.top +
                           kToolbarHeight +
-                          15, // Adjusted padding for AppBar and status bar
+                          15,
                     ),
                     children: [
-                      // Directly provide children to ListView
+                      // This Container wraps the Column that was reported for overflow
                       Container(
                         padding: const EdgeInsets.all(15.0),
                         decoration: BoxDecoration(
@@ -285,13 +277,12 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                           ],
                         ),
                         child: Column(
-                          // This inner Column is fine
+                          // This is the Column likely at line 227 that causes overflow
                           children: [
                             CircleAvatar(
                               radius: 50,
                               backgroundColor: AppColors.primaryGold,
                               child: const Icon(
-                                // Added const
                                 Icons.person,
                                 size: 60,
                                 color: AppColors.darkBackground,
@@ -350,14 +341,12 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                           cardColor: AppColors.cardBackgroundLight,
                           children: [
                             _buildProfileListItem(
-                              icon:
-                                  Icons
-                                      .admin_panel_settings, // Admin-specific icon
+                              icon: Icons.admin_panel_settings,
                               title: 'Admin Panel',
                               onTap: () {
                                 _showSnackBar(
                                   'Entering Admin Panel!',
-                                  AppColors.primaryGold, // Use a distinct color
+                                  AppColors.primaryGold,
                                 );
                                 Navigator.pushNamed(
                                   context,
@@ -367,7 +356,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 25), // Space after admin card
+                        const SizedBox(height: 25),
                       ],
 
                       _buildSectionCard(
