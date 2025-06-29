@@ -1,14 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:thave_luxe_app/helper/preference_handler.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/order_history_response.dart'; // Import the new OrderHistoryResponse
+import 'package:thave_luxe_app/tugas_enam_belas/models/order_history_response.dart';
 
-/// `OrderProvider` handles all API interactions related to order data.
 class OrderProvider {
-  final String _baseUrl =
-      'https://thaveluxe.thv.thegrent.com/api'; // Your base API URL
+  final String _baseUrl = 'https://thaveluxe.thv.thegrent.com/api';
 
-  // Private helper to get the authorization token from preferences
   Future<Map<String, String>> _getHeaders() async {
     final token = await PreferenceHandler.getToken();
     return {
@@ -18,14 +15,10 @@ class OrderProvider {
     };
   }
 
-  /// Fetches the order history for the authenticated user (or all if admin).
-  /// Throws an exception if the API call fails or returns an error.
   Future<List<OrderData>> getOrderHistory() async {
-    final url = Uri.parse(
-      '$_baseUrl/history',
-    ); // As per Postman collection: /api/history
+    final url = Uri.parse('$_baseUrl/history');
     try {
-      final headers = await _getHeaders(); // Requires authentication
+      final headers = await _getHeaders();
       final response = await http.get(url, headers: headers);
 
       if (response.statusCode == 200) {

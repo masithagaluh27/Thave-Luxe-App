@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/admi_product_screen.dart';
+import 'package:thave_luxe_app/helper/preference_handler.dart'; // Import PreferenceHandler for logout
+import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/admin_product_screen.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/admin_category.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/view_order_screen_admin_screen.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart'; // Import your ViewOrdersScreen16
 
 class AdminDashboardScreen16 extends StatelessWidget {
   const AdminDashboardScreen16({super.key});
@@ -26,22 +29,27 @@ class AdminDashboardScreen16 extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout, color: AppColors.redAccent),
-            onPressed: () {
-              // TODO: Implement actual logout functionality
-              Navigator.popUntil(
-                context,
-                (route) => route.isFirst,
-              ); // Go back to root
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Admin logged out.',
-                    style: GoogleFonts.montserrat(color: AppColors.lightText),
+            onPressed: () async {
+              // Implement actual logout functionality: clear token and navigate to login
+              await PreferenceHandler.clearToken();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                    builder: (context) => const LoginScreen16(),
                   ),
-                  backgroundColor: AppColors.blue,
-                  duration: const Duration(seconds: 2),
-                ),
-              );
+                  (route) => false, // Remove all routes from the stack
+                );
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Admin logged out.',
+                      style: GoogleFonts.montserrat(color: AppColors.lightText),
+                    ),
+                    backgroundColor: AppColors.blue,
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             },
             tooltip: 'Logout',
           ),
@@ -59,6 +67,7 @@ class AdminDashboardScreen16 extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Card for managing Products
             _buildAdminCard(
               context,
               icon: Icons.inventory_2_outlined,
@@ -69,6 +78,21 @@ class AdminDashboardScreen16 extends StatelessWidget {
               },
             ),
             const SizedBox(height: 16),
+            // Card for managing Categories
+            _buildAdminCard(
+              context,
+              icon: Icons.category_outlined, // Icon for categories
+              title: 'Manage Categories',
+              subtitle: 'Organize and update product categories.',
+              onTap: () {
+                Navigator.pushNamed(
+                  context,
+                  ManageCategoriesScreen16.id,
+                ); // Navigate to the category screen
+              },
+            ),
+            const SizedBox(height: 16),
+            // Card for viewing Orders
             _buildAdminCard(
               context,
               icon: Icons.shopping_cart_checkout_outlined,
@@ -81,13 +105,14 @@ class AdminDashboardScreen16 extends StatelessWidget {
                 ); // Navigate to ViewOrdersScreen
               },
             ),
+            // You can add more admin cards here, e.g., for managing Brands, Users, etc.
           ],
         ),
       ),
     );
   }
 
-  // Helper widget to build consistent admin action cards
+  // Helper widget to build consistent admin action cards with your styling
   Widget _buildAdminCard(
     BuildContext context, {
     required IconData icon,
@@ -106,7 +131,7 @@ class AdminDashboardScreen16 extends StatelessWidget {
           padding: const EdgeInsets.all(20.0),
           child: Row(
             children: [
-              Icon(icon, size: 40, color: AppColors.primaryGold),
+              Icon(icon, size: 40, color: AppColors.primaryGold), // Icon color
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
@@ -115,7 +140,7 @@ class AdminDashboardScreen16 extends StatelessWidget {
                     Text(
                       title,
                       style: GoogleFonts.playfairDisplay(
-                        color: AppColors.textDark,
+                        color: AppColors.textDark, // Title text color
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                       ),
@@ -124,14 +149,17 @@ class AdminDashboardScreen16 extends StatelessWidget {
                     Text(
                       subtitle,
                       style: GoogleFonts.montserrat(
-                        color: AppColors.subtleText,
+                        color: AppColors.subtleText, // Subtitle text color
                         fontSize: 14,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios, color: AppColors.subtleGrey),
+              const Icon(
+                Icons.arrow_forward_ios,
+                color: AppColors.subtleGrey,
+              ), // Arrow icon color
             ],
           ),
         ),

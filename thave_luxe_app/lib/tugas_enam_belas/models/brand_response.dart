@@ -1,3 +1,5 @@
+// Path: lib/tugas_enam_belas/models/brand_response.dart
+
 import 'dart:convert';
 
 // Function to parse JSON string into BrandResponse object
@@ -16,12 +18,11 @@ class BrandResponse {
 
   factory BrandResponse.fromJson(Map<String, dynamic> json) => BrandResponse(
     message: json["message"],
-    // Safely map data to a list of Brand objects
     data:
         json["data"] == null
             ? []
             : List<Brand>.from(json["data"]!.map((x) => Brand.fromJson(x))),
-    error: json["error"], // Handle potential error field
+    error: json["error"],
   );
 
   Map<String, dynamic> toJson() => {
@@ -35,14 +36,27 @@ class BrandResponse {
 class Brand {
   final int? id;
   final String? name;
+  final String? imageUrl; // <--- Ensure this field exists and is nullable
+  final String? description; // <--- Ensure this field exists and is nullable
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  Brand({this.id, this.name, this.createdAt, this.updatedAt});
+  Brand({
+    this.id,
+    this.name,
+    this.imageUrl, // <--- Add to constructor
+    this.description, // <--- Add to constructor
+    this.createdAt,
+    this.updatedAt,
+  });
 
   factory Brand.fromJson(Map<String, dynamic> json) => Brand(
     id: json["id"],
     name: json["name"],
+    imageUrl:
+        json["image_url"], // <--- Ensure your API uses "image_url" or adjust accordingly
+    description:
+        json["description"], // <--- Ensure your API uses "description" or adjust accordingly
     createdAt:
         json["created_at"] == null ? null : DateTime.parse(json["created_at"]),
     updatedAt:
@@ -52,6 +66,8 @@ class Brand {
   Map<String, dynamic> toJson() => {
     "id": id,
     "name": name,
+    "image_url": imageUrl, // <--- Add to toJson
+    "description": description, // <--- Add to toJson
     "created_at": createdAt?.toIso8601String(),
     "updated_at": updatedAt?.toIso8601String(),
   };

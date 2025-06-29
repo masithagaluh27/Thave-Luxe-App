@@ -1,22 +1,30 @@
+// File: thave_luxe_app/tugas_enam_belas/api/store_provider.dart
+
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:thave_luxe_app/helper/preference_handler.dart'; // Using your PreferenceHandler
+// ---------- 1. Tambah import baru di bagian atas ----------
+import 'package:thave_luxe_app/tugas_enam_belas/models/add_product_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/edit_product_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/delete_product_response.dart';
+
+import 'package:thave_luxe_app/helper/preference_handler.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/endpoint.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/add_to_cart_response.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/brand_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/cart_list_response.dart'; // Contains CartItemData
 import 'package:thave_luxe_app/tugas_enam_belas/models/category_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart'; // Using your Product model
+import 'package:thave_luxe_app/tugas_enam_belas/models/history_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/checkout_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/order_history_response.dart';
 
 class ApiProvider {
-  // This helper will get the token using the PreferenceHandler
-  // PreferenceHandler uses '_tokenKey = auth_token'
   Future<String?> _getUserToken() async {
     final token = await PreferenceHandler.getToken();
-    print('ApiProvider: Retrieved token: $token'); // Add logging for debugging
+    print('ApiProvider: Retrieved token: $token');
     return token;
   }
 
-  // --- Helper for Authorized GET Requests ---
   Future<http.Response> _authorizedGet(
     String url, {
     bool includeAuth = true,
@@ -33,7 +41,6 @@ class ApiProvider {
     return response;
   }
 
-  // --- Helper for Authorized POST Requests ---
   Future<http.Response> _authorizedPost(
     String url,
     Map<String, dynamic> body, {
@@ -58,7 +65,6 @@ class ApiProvider {
     return response;
   }
 
-  // --- Helper for Authorized PUT Requests ---
   Future<http.Response> _authorizedPut(
     String url,
     Map<String, dynamic> body, {
@@ -83,7 +89,6 @@ class ApiProvider {
     return response;
   }
 
-  // --- Helper for Authorized DELETE Requests ---
   Future<http.Response> _authorizedDelete(
     String url, {
     bool includeAuth = true,
@@ -100,17 +105,21 @@ class ApiProvider {
     return response;
   }
 
-  // --- Fetch Products ---
-  Future<ProductResponse> getProducts() async {
+  // --- Fetch Products (modified to accept categoryId and simplified data handling) ---
+  Future<ProductResponse> getProducts({int? categoryId}) async {
     try {
-      // Products can typically be viewed without authentication, adjust if your API requires it.
-      final response = await _authorizedGet(
-        Endpoint.products,
-        includeAuth: false,
-      );
-
+      String url = Endpoint.products;
+      if (categoryId != null) {
+        url =
+            '$url?category_id=$categoryId'; // Append category_id as a query parameter
+      }
+      final response = await _authorizedGet(url, includeAuth: true);
+      print(response.body);
       if (response.statusCode == 200) {
-        return productResponseFromJson(response.body);
+        final ProductResponse productResponse = productResponseFromJson(
+          response.body,
+        );
+        return productResponse;
       } else if (response.statusCode == 401) {
         await PreferenceHandler.clearToken();
         throw Exception(
@@ -129,38 +138,36 @@ class ApiProvider {
   }
 
   /// Adds a new product to the database. Requires admin privileges (auth token).
-  Future<Product> addProduct({
+  // ---------- 2. Ubah method addProduct ----------
+  Future<AddProductResponse> addProduct({
     required String name,
     required int price,
     String? description,
     String? imageUrl,
+    int? stock,
+    int? brandId,
   }) async {
     try {
-      final response = await _authorizedPost(
-        Endpoint.products, // Assuming Endpoint.products is '/api/products'
-        {
-          'name': name,
-          'price': price,
-          'description': description,
-          'image_url': imageUrl,
-        },
-        includeAuth: true, // Requires authentication
-      );
-
-      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      final response = await _authorizedPost(Endpoint.products, {
+        'name': name,
+        'price': price,
+        'description': description,
+        'image_url': imageUrl,
+        'stock': stock,
+        'brand_id': brandId,
+      }, includeAuth: true);
 
       if (response.statusCode == 201) {
-        return Product.fromJson(
-          jsonResponse['data'],
-        ); // Assuming data is nested
+        return addProductResponseFromJson(response.body);
       } else if (response.statusCode == 401) {
         await PreferenceHandler.clearToken();
         throw Exception(
           "Unauthorized: Your session has expired. Please log in again to add a product.",
         );
       } else {
+        final errorBody = jsonDecode(response.body);
         throw Exception(
-          'Failed to add product: ${jsonResponse['message'] ?? response.statusCode}',
+          'Failed to add product: ${errorBody['message'] ?? response.statusCode}',
         );
       }
     } catch (e) {
@@ -169,33 +176,28 @@ class ApiProvider {
   }
 
   /// Updates an existing product in the database. Requires admin privileges (auth token).
-  Future<Product> updateProduct({
+  // ---------- 3. Ubah method updateProduct ----------
+  Future<EditProductResponse> updateProduct({
     required int id,
     required String name,
     required int price,
     String? description,
     String? imageUrl,
+    int? stock,
+    int? brandId,
   }) async {
     try {
-      final response = await _authorizedPut(
-        Endpoint.productDetail(
-          id,
-        ), // Assuming Endpoint.productDetail(id) is '/api/products/{id}'
-        {
-          'name': name,
-          'price': price,
-          'description': description,
-          'image_url': imageUrl,
-        },
-        includeAuth: true, // Requires authentication
-      );
-
-      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      final response = await _authorizedPut(Endpoint.productDetail(id), {
+        'name': name,
+        'price': price,
+        'description': description,
+        'image_url': imageUrl,
+        'stock': stock,
+        'brand_id': brandId,
+      }, includeAuth: true);
 
       if (response.statusCode == 200) {
-        return Product.fromJson(
-          jsonResponse['data'],
-        ); // Assuming data is nested
+        return editProductResponseFromJson(response.body);
       } else if (response.statusCode == 401) {
         await PreferenceHandler.clearToken();
         throw Exception(
@@ -204,8 +206,9 @@ class ApiProvider {
       } else if (response.statusCode == 404) {
         throw Exception("Product not found for update.");
       } else {
+        final errorBody = jsonDecode(response.body);
         throw Exception(
-          'Failed to update product: ${jsonResponse['message'] ?? response.statusCode}',
+          'Failed to update product: ${errorBody['message'] ?? response.statusCode}',
         );
       }
     } catch (e) {
@@ -214,17 +217,19 @@ class ApiProvider {
   }
 
   /// Deletes a product from the database. Requires admin privileges (auth token).
-  Future<void> deleteProduct({required int id}) async {
+  // ---------- 4. Ubah method deleteProduct ----------
+  Future<DeleteProductResponse> deleteProduct({required int id}) async {
     try {
       final response = await _authorizedDelete(
-        Endpoint.products(
-          id,
-        ), // Assuming Endpoint.productDetail(id) is '/api/products/{id}'
-        includeAuth: true, // Requires authentication
+        Endpoint.productDetail(id),
+        includeAuth: true,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        return; // Success
+      // 204 = no‑content; backend mungkin tidak kirim JSON apa‑apa
+      if (response.statusCode == 204) {
+        return DeleteProductResponse(message: "Product deleted", data: null);
+      } else if (response.statusCode == 200) {
+        return deleteProductResponseFromJson(response.body);
       } else if (response.statusCode == 401) {
         await PreferenceHandler.clearToken();
         throw Exception(
@@ -243,7 +248,30 @@ class ApiProvider {
     }
   }
 
-  // --- Add to Cart ---
+  // --- Cart operations (existing `getCart` method, confirmed correct name) ---
+  Future<List<CartItem>> getCart() async {
+    // Renamed from getCartItems for clarity and consistency
+    final url = Uri.parse(Endpoint.getCart);
+    try {
+      final response = await _authorizedGet(url.toString());
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> jsonResponse = json.decode(response.body);
+        final CartListResponse cartResponse = CartListResponse.fromJson(
+          jsonResponse,
+        );
+        return cartResponse.data ?? [];
+      } else {
+        final errorBody = json.decode(response.body);
+        throw Exception(
+          'Failed to load cart: ${errorBody['message'] ?? response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to get cart: $e');
+    }
+  }
+
   Future<AddToCartResponse> addToCart({
     required int productId,
     required int quantity,
@@ -273,7 +301,65 @@ class ApiProvider {
     }
   }
 
-  // --- Fetch Brands ---
+  Future<void> deleteCartItem({required int cartItemId}) async {
+    try {
+      final response = await _authorizedDelete(
+        Endpoint.deleteCartItem(cartItemId),
+      );
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        return;
+      } else {
+        String errorMessage =
+            'Failed to delete item from cart: ${response.statusCode}';
+        try {
+          final errorBody = json.decode(response.body);
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (_) {}
+        throw Exception(errorMessage);
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to delete cart item: $e');
+    }
+  }
+
+  Future<CheckoutResponse> checkout() async {
+    try {
+      final response = await _authorizedPost(Endpoint.checkout, {});
+      final Map<String, dynamic> jsonResponse = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return CheckoutResponse.fromJson(jsonResponse);
+      } else {
+        throw Exception(
+          'Checkout failed: ${jsonResponse['message'] ?? response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to checkout: $e');
+    }
+  }
+
+  Future<OrderHistoryResponse> getOrderHistory() async {
+    try {
+      final response = await _authorizedGet(Endpoint.transactionHistory);
+
+      if (response.statusCode == 200) {
+        return OrderHistoryResponse.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 401) {
+        await PreferenceHandler.clearToken();
+        throw Exception(
+          "Unauthorized: Your session has expired. Please log in again to view order history.",
+        );
+      } else {
+        final errorBody = json.decode(response.body);
+        throw Exception(
+          'Failed to load order history: ${errorBody['message'] ?? response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Failed to connect to get order history: $e');
+    }
+  }
+
   Future<BrandResponse> getBrands() async {
     try {
       final response = await _authorizedGet(Endpoint.brands);
@@ -297,7 +383,6 @@ class ApiProvider {
     }
   }
 
-  // --- Add Brand ---
   Future<BrandResponse> addBrand({required String name}) async {
     try {
       final response = await _authorizedPost(Endpoint.brands, {'name': name});
@@ -321,7 +406,6 @@ class ApiProvider {
     }
   }
 
-  // --- Update Brand ---
   Future<BrandResponse> updateBrand({
     required int id,
     required String name,
@@ -352,7 +436,6 @@ class ApiProvider {
     }
   }
 
-  // --- Delete Brand ---
   Future<void> deleteBrand({required int id}) async {
     try {
       final response = await _authorizedDelete(Endpoint.brandDetail(id));
@@ -378,7 +461,6 @@ class ApiProvider {
     }
   }
 
-  // --- Fetch Categories ---
   Future<CategoryResponse> getCategories() async {
     try {
       final response = await _authorizedGet(Endpoint.categories);
@@ -402,7 +484,6 @@ class ApiProvider {
     }
   }
 
-  // --- Add Category ---
   Future<CategoryResponse> addCategory({required String name}) async {
     try {
       final response = await _authorizedPost(Endpoint.categories, {
@@ -428,7 +509,6 @@ class ApiProvider {
     }
   }
 
-  // --- Update Category ---
   Future<CategoryResponse> updateCategory({
     required int id,
     required String name,
@@ -459,7 +539,6 @@ class ApiProvider {
     }
   }
 
-  // --- Delete Category ---
   Future<void> deleteCategory({required int id}) async {
     try {
       final response = await _authorizedDelete(Endpoint.categoryDetail(id));
@@ -482,6 +561,25 @@ class ApiProvider {
       }
     } catch (e) {
       throw Exception("Delete Category Error: $e");
+    }
+  }
+
+  final http.Client client = http.Client();
+  Future<HistoryResponse> getTransactionHistory() async {
+    final token = await PreferenceHandler.getToken();
+
+    final response = await client.get(
+      Uri.parse(Endpoint.transactionHistory),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return historyResponseFromJson(response.body);
+    } else {
+      throw Exception("Failed to fetch transaction history");
     }
   }
 }

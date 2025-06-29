@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart'; // Ensure this path is correct
-import 'package:thave_luxe_app/tugas_enam_belas/api/cart_provider.dart'; // Import the new CartProvider
-import 'package:thave_luxe_app/tugas_enam_belas/models/cart_list_response.dart'; // Import CartListResponse which defines CartItem
+import 'package:thave_luxe_app/tugas_enam_belas/api/cart_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/cart_list_response.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/checkout_detail_screen.dart';
 
 class CartScreen16 extends StatefulWidget {
   const CartScreen16({super.key});
-  static const String id = '/cart16'; // Define a static ID for routing
+  static const String id = '/cart16';
 
   @override
   State<CartScreen16> createState() => _CartScreen16State();
 }
 
 class _CartScreen16State extends State<CartScreen16> {
-  final CartProvider _cartProvider = CartProvider(); // Instantiate CartProvider
-  List<CartItem> _cartItems = []; // Use CartItem model
-  bool _isLoading = true; // State for loading indicator
-  String? _errorMessage; // State for error messages
+  final CartProvider _cartProvider = CartProvider();
+  List<CartItem> _cartItems = [];
+  bool _isLoading = true;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _fetchCartItems(); // Fetch real data when the screen initializes
+    _fetchCartItems();
   }
 
   // Fetches cart items from the API
@@ -66,8 +66,8 @@ class _CartScreen16State extends State<CartScreen16> {
           content: Text(
             message,
             style: GoogleFonts.montserrat(
-              color: AppColors.lightText,
-            ), // Use lightText for SnackBar content
+              color: AppColors.lightText, // Using your AppColors
+            ),
           ),
           backgroundColor: color,
           duration: const Duration(seconds: 2),
@@ -81,8 +81,7 @@ class _CartScreen16State extends State<CartScreen16> {
   Future<void> _updateQuantity(int productInCartId, int delta) async {
     // Find the item in the current local cart list using product's ID
     final existingCartItemIndex = _cartItems.indexWhere(
-      (item) =>
-          item.product?.id == productInCartId, // Corrected to item.product?.id
+      (item) => item.product?.id == productInCartId,
     );
     CartItem? currentItem;
     if (existingCartItemIndex != -1) {
@@ -95,7 +94,7 @@ class _CartScreen16State extends State<CartScreen16> {
         currentItem.quantity == null) {
       _showSnackBar(
         "Invalid cart item data for quantity update.",
-        AppColors.redAccent,
+        AppColors.redAccent, // Using your AppColors
       );
       return;
     }
@@ -110,7 +109,9 @@ class _CartScreen16State extends State<CartScreen16> {
       builder: (BuildContext context) {
         return Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppColors.primaryGold,
+            ), // Using your AppColors
           ),
         );
       },
@@ -122,11 +123,14 @@ class _CartScreen16State extends State<CartScreen16> {
         if (currentItem.id != null) {
           // Check if cart item ID is not null
           await _cartProvider.deleteFromCart(cartItemId: currentItem.id!);
-          _showSnackBar("Item removed from cart.", AppColors.redAccent);
+          _showSnackBar(
+            "Item removed from cart.",
+            AppColors.redAccent,
+          ); // Using your AppColors
         } else {
           _showSnackBar(
             "Cannot remove item: Cart item ID is null.", // More specific message
-            AppColors.redAccent,
+            AppColors.redAccent, // Using your AppColors
           );
         }
       } else {
@@ -136,14 +140,17 @@ class _CartScreen16State extends State<CartScreen16> {
               currentItem.product!.id!, // Use the product's ID for the API call
           quantity: newQuantity,
         );
-        _showSnackBar("Quantity updated.", AppColors.blue);
+        _showSnackBar(
+          "Quantity updated.",
+          AppColors.blue,
+        ); // Using your AppColors
       }
       // Always re-fetch the cart to ensure UI is in sync with backend
       await _fetchCartItems();
     } on Exception catch (e) {
       _showSnackBar(
         'Failed to update quantity: ${e.toString().replaceFirst('Exception: ', '')}',
-        AppColors.redAccent,
+        AppColors.redAccent, // Using your AppColors
       );
     } finally {
       if (mounted) {
@@ -161,7 +168,9 @@ class _CartScreen16State extends State<CartScreen16> {
       builder: (BuildContext context) {
         return Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppColors.primaryGold,
+            ), // Using your AppColors
           ),
         );
       },
@@ -169,12 +178,15 @@ class _CartScreen16State extends State<CartScreen16> {
 
     try {
       await _cartProvider.deleteFromCart(cartItemId: cartItemId);
-      _showSnackBar("Item removed from cart.", AppColors.redAccent);
+      _showSnackBar(
+        "Item removed from cart.",
+        AppColors.redAccent,
+      ); // Using your AppColors
       await _fetchCartItems(); // Re-fetch cart after deletion
     } on Exception catch (e) {
       _showSnackBar(
         'Failed to remove item: ${e.toString().replaceFirst('Exception: ', '')}',
-        AppColors.redAccent,
+        AppColors.redAccent, // Using your AppColors
       );
     } finally {
       if (mounted) {
@@ -188,7 +200,7 @@ class _CartScreen16State extends State<CartScreen16> {
     if (_cartItems.isEmpty) {
       _showSnackBar(
         "Your cart is empty. Add items to checkout!",
-        AppColors.redAccent,
+        AppColors.redAccent, // Using your AppColors
       );
       return;
     }
@@ -200,7 +212,9 @@ class _CartScreen16State extends State<CartScreen16> {
       builder: (BuildContext context) {
         return Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+            valueColor: AlwaysStoppedAnimation<Color>(
+              AppColors.primaryGold,
+            ), // Using your AppColors
           ),
         );
       },
@@ -210,10 +224,11 @@ class _CartScreen16State extends State<CartScreen16> {
       final response = await _cartProvider.checkout();
       _showSnackBar(
         response.message ?? "Checkout successful!",
-        AppColors.green,
+        AppColors.green, // Using your AppColors
       );
       if (mounted) {
         Navigator.of(context).pop();
+        // Assuming CheckoutScreen16 handles displaying checkout success and details
         Navigator.pushReplacementNamed(context, CheckoutScreen16.id);
       }
       setState(() {
@@ -224,7 +239,7 @@ class _CartScreen16State extends State<CartScreen16> {
         Navigator.of(context).pop(); // Dismiss loading dialog
         _showSnackBar(
           'Checkout failed: ${e.toString().replaceFirst('Exception: ', '')}',
-          AppColors.redAccent,
+          AppColors.redAccent, // Using your AppColors
         );
       }
     }
@@ -233,20 +248,23 @@ class _CartScreen16State extends State<CartScreen16> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: AppColors.darkBackground, // Using your AppColors
       appBar: AppBar(
         title: Text(
           'Your Cart',
           style: GoogleFonts.playfairDisplay(
             fontWeight: FontWeight.bold,
-            color: AppColors.lightText,
+            color: AppColors.lightText, // Using your AppColors
           ),
         ),
         centerTitle: true,
-        backgroundColor: AppColors.darkBackground,
+        backgroundColor: AppColors.darkBackground, // Using your AppColors
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
+          icon: const Icon(
+            Icons.arrow_back_ios,
+            color: AppColors.lightText,
+          ), // Using your AppColors
           onPressed: () {
             Navigator.pop(context);
           },
@@ -255,7 +273,10 @@ class _CartScreen16State extends State<CartScreen16> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
+            colors: [
+              AppColors.darkBackground,
+              AppColors.backgroundGradientEnd,
+            ], // Using your AppColors
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -268,7 +289,7 @@ class _CartScreen16State extends State<CartScreen16> {
                       ? Center(
                         child: CircularProgressIndicator(
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryGold,
+                            AppColors.primaryGold, // Using your AppColors
                           ),
                         ),
                       )
@@ -283,7 +304,9 @@ class _CartScreen16State extends State<CartScreen16> {
                                 'Error: $_errorMessage',
                                 textAlign: TextAlign.center,
                                 style: const TextStyle(
-                                  color: AppColors.redAccent,
+                                  color:
+                                      AppColors
+                                          .redAccent, // Using your AppColors
                                   fontSize: 16,
                                 ),
                               ),
@@ -291,8 +314,12 @@ class _CartScreen16State extends State<CartScreen16> {
                               ElevatedButton(
                                 onPressed: _fetchCartItems,
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryGold,
-                                  foregroundColor: AppColors.darkBackground,
+                                  backgroundColor:
+                                      AppColors
+                                          .primaryGold, // Using your AppColors
+                                  foregroundColor:
+                                      AppColors
+                                          .darkBackground, // Using your AppColors
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -315,7 +342,8 @@ class _CartScreen16State extends State<CartScreen16> {
                           child: Text(
                             'Your cart is empty. Start adding some luxury items!',
                             style: GoogleFonts.playfairDisplay(
-                              color: AppColors.subtleGrey,
+                              color:
+                                  AppColors.subtleGrey, // Using your AppColors
                               fontSize: 18,
                             ),
                             textAlign: TextAlign.center,
@@ -352,14 +380,16 @@ class _CartScreen16State extends State<CartScreen16> {
         item.quantity == null) {
       return Card(
         elevation: 5,
-        color: AppColors.cardBackgroundLight,
+        color: AppColors.cardBackgroundLight, // Using your AppColors
         margin: const EdgeInsets.symmetric(vertical: 8.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Text(
             'Invalid cart item data (missing product details). Please refresh.',
-            style: GoogleFonts.montserrat(color: AppColors.redAccent),
+            style: GoogleFonts.montserrat(
+              color: AppColors.redAccent,
+            ), // Using your AppColors
           ),
         ),
       );
@@ -367,7 +397,7 @@ class _CartScreen16State extends State<CartScreen16> {
 
     return Card(
       elevation: 5,
-      color: AppColors.cardBackgroundLight,
+      color: AppColors.cardBackgroundLight, // Using your AppColors
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -380,13 +410,13 @@ class _CartScreen16State extends State<CartScreen16> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppColors.imagePlaceholderLight,
+                color: AppColors.imagePlaceholderLight, // Using your AppColors
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
               child: const Icon(
                 Icons.shopping_bag_outlined,
-                color: AppColors.subtleGrey,
+                color: AppColors.subtleGrey, // Using your AppColors
                 size: 50,
               ),
             ),
@@ -398,7 +428,7 @@ class _CartScreen16State extends State<CartScreen16> {
                   Text(
                     item.product!.name!, // Assert non-null after check above
                     style: GoogleFonts.playfairDisplay(
-                      color: AppColors.textDark,
+                      color: AppColors.textDark, // Using your AppColors
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -409,7 +439,7 @@ class _CartScreen16State extends State<CartScreen16> {
                   Text(
                     'Price: Rp ${item.product!.price!.toStringAsFixed(0)}', // Assert non-null
                     style: GoogleFonts.montserrat(
-                      color: AppColors.subtleText,
+                      color: AppColors.subtleText, // Using your AppColors
                       fontSize: 14,
                     ),
                   ),
@@ -428,7 +458,7 @@ class _CartScreen16State extends State<CartScreen16> {
                         child: Text(
                           item.quantity.toString(),
                           style: GoogleFonts.montserrat(
-                            color: AppColors.textDark,
+                            color: AppColors.textDark, // Using your AppColors
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -445,7 +475,7 @@ class _CartScreen16State extends State<CartScreen16> {
                       IconButton(
                         icon: const Icon(
                           Icons.delete_outline,
-                          color: AppColors.redAccent,
+                          color: AppColors.redAccent, // Using your AppColors
                           size: 28,
                         ),
                         onPressed: () {
@@ -455,7 +485,7 @@ class _CartScreen16State extends State<CartScreen16> {
                           } else {
                             _showSnackBar(
                               "Cannot remove item: Cart item ID is null.",
-                              AppColors.redAccent,
+                              AppColors.redAccent, // Using your AppColors
                             );
                           }
                         },
@@ -481,14 +511,22 @@ class _CartScreen16State extends State<CartScreen16> {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: AppColors.primaryGold.withOpacity(0.15),
+          color: AppColors.primaryGold.withOpacity(
+            0.15,
+          ), // Using your AppColors with opacity
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: AppColors.primaryGold.withOpacity(0.4),
+            color: AppColors.primaryGold.withOpacity(
+              0.4,
+            ), // Using your AppColors with opacity
             width: 1.5,
           ),
         ),
-        child: Icon(icon, color: AppColors.primaryGold, size: 22),
+        child: Icon(
+          icon,
+          color: AppColors.primaryGold,
+          size: 22,
+        ), // Using your AppColors
       ),
     );
   }
@@ -498,7 +536,7 @@ class _CartScreen16State extends State<CartScreen16> {
     return Container(
       padding: const EdgeInsets.all(25.0),
       decoration: BoxDecoration(
-        color: AppColors.darkBackground,
+        color: AppColors.darkBackground, // Using your AppColors
         borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         boxShadow: [
           BoxShadow(
@@ -518,7 +556,7 @@ class _CartScreen16State extends State<CartScreen16> {
               Text(
                 'Grand Total:',
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.lightText,
+                  color: AppColors.lightText, // Using your AppColors
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -526,7 +564,7 @@ class _CartScreen16State extends State<CartScreen16> {
               Text(
                 'Rp ${_calculateTotalPrice().toStringAsFixed(0)}',
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.primaryGold,
+                  color: AppColors.primaryGold, // Using your AppColors
                   fontSize: 30,
                   fontWeight: FontWeight.bold,
                 ),
@@ -539,8 +577,9 @@ class _CartScreen16State extends State<CartScreen16> {
             child: ElevatedButton(
               onPressed: _checkout,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGold,
-                foregroundColor: AppColors.darkBackground,
+                backgroundColor: AppColors.primaryGold, // Using your AppColors
+                foregroundColor:
+                    AppColors.darkBackground, // Using your AppColors
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),

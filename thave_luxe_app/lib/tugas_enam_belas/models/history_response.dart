@@ -1,4 +1,7 @@
-// lib/tugas_lima_belas/Models/history_response.dart
+// Path: lib/tugas_lima_belas/models/history_response.dart
+// Model diperbarui: menambahkan user data, transaction history,
+// serta discount & imageUrl di produk
+
 import 'dart:convert';
 
 HistoryResponse historyResponseFromJson(String str) =>
@@ -19,7 +22,7 @@ class HistoryResponse {
             json["data"] == null
                 ? []
                 : List<HistoryItem>.from(
-                  json["data"]!.map((x) => HistoryItem.fromJson(x)),
+                  json["data"].map((x) => HistoryItem.fromJson(x)),
                 ),
       );
 
@@ -33,6 +36,9 @@ class HistoryResponse {
 class HistoryItem {
   int? id;
   int? userId;
+  HistoryUser? user; // 🔥 NEW: detail user
+  List<TransactionHistory>?
+  transactionHistory; // 🔥 NEW: riwayat status transaksi
   List<HistoryItemProduct>? items;
   int? total;
   DateTime? updatedAt;
@@ -41,6 +47,8 @@ class HistoryItem {
   HistoryItem({
     this.id,
     this.userId,
+    this.user,
+    this.transactionHistory,
     this.items,
     this.total,
     this.updatedAt,
@@ -50,11 +58,20 @@ class HistoryItem {
   factory HistoryItem.fromJson(Map<String, dynamic> json) => HistoryItem(
     id: json["id"],
     userId: json["user_id"],
+    user: json["user"] == null ? null : HistoryUser.fromJson(json["user"]),
+    transactionHistory:
+        json["transaction_history"] == null
+            ? []
+            : List<TransactionHistory>.from(
+              json["transaction_history"].map(
+                (x) => TransactionHistory.fromJson(x),
+              ),
+            ),
     items:
         json["items"] == null
             ? []
             : List<HistoryItemProduct>.from(
-              json["items"]!.map((x) => HistoryItemProduct.fromJson(x)),
+              json["items"].map((x) => HistoryItemProduct.fromJson(x)),
             ),
     total: json["total"],
     updatedAt:
@@ -66,6 +83,11 @@ class HistoryItem {
   Map<String, dynamic> toJson() => {
     "id": id,
     "user_id": userId,
+    "user": user?.toJson(),
+    "transaction_history":
+        transactionHistory == null
+            ? []
+            : List<dynamic>.from(transactionHistory!.map((x) => x.toJson())),
     "items":
         items == null ? [] : List<dynamic>.from(items!.map((x) => x.toJson())),
     "total": total,
@@ -99,11 +121,67 @@ class HistoryProduct {
   int? id;
   String? name;
   int? price;
+  int? discount; // 🔥 NEW
+  String? imageUrl; // 🔥 NEW
 
-  HistoryProduct({this.id, this.name, this.price});
+  HistoryProduct({
+    this.id,
+    this.name,
+    this.price,
+    this.discount,
+    this.imageUrl,
+  });
 
-  factory HistoryProduct.fromJson(Map<String, dynamic> json) =>
-      HistoryProduct(id: json["id"], name: json["name"], price: json["price"]);
+  factory HistoryProduct.fromJson(Map<String, dynamic> json) => HistoryProduct(
+    id: json["id"],
+    name: json["name"],
+    price: json["price"],
+    discount: json["discount"],
+    imageUrl: json["image_url"],
+  );
 
-  Map<String, dynamic> toJson() => {"id": id, "name": name, "price": price};
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "name": name,
+    "price": price,
+    "discount": discount,
+    "image_url": imageUrl,
+  };
+}
+
+class HistoryUser {
+  int? id;
+  String? name;
+  String? email;
+
+  HistoryUser({this.id, this.name, this.email});
+
+  factory HistoryUser.fromJson(Map<String, dynamic> json) =>
+      HistoryUser(id: json["id"], name: json["name"], email: json["email"]);
+
+  Map<String, dynamic> toJson() => {"id": id, "name": name, "email": email};
+}
+
+class TransactionHistory {
+  int? id;
+  String? status;
+  DateTime? timestamp;
+
+  TransactionHistory({this.id, this.status, this.timestamp});
+
+  factory TransactionHistory.fromJson(Map<String, dynamic> json) =>
+      TransactionHistory(
+        id: json["id"],
+        status: json["status"],
+        timestamp:
+            json["timestamp"] == null
+                ? null
+                : DateTime.parse(json["timestamp"]),
+      );
+
+  Map<String, dynamic> toJson() => {
+    "id": id,
+    "status": status,
+    "timestamp": timestamp?.toIso8601String(),
+  };
 }

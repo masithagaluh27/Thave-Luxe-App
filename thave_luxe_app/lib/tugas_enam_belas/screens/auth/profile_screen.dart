@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/api/auth_provider.dart'; // Corrected import path
+
 import 'package:thave_luxe_app/tugas_enam_belas/models/profile_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/profile/login_screen_16.dart'; // Ensure this model is correctly defined
+
+import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/admin_product_screen.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart'; // Ensure this model is correctly defined
 
 class ProfileScreen16 extends StatefulWidget {
   const ProfileScreen16({super.key});
@@ -17,9 +20,12 @@ class ProfileScreen16 extends StatefulWidget {
 class _ProfileScreen16State extends State<ProfileScreen16> {
   final AuthProvider _authProvider = AuthProvider();
 
-  User? _userProfile; // Keep using User model for structure
+  AppUser? _userProfile; // Keep using User model for structure
   bool _isLoading = true; // Set to true initially as we are fetching from API
   String? _errorMessage;
+
+  // Check if the current user is the admin
+  bool get _isAdminUser => _userProfile?.email == 'admin@gmail.com';
 
   @override
   void initState() {
@@ -197,7 +203,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
             Navigator.pop(context);
           },
         ),
-        actions: [],
+        actions: const [], // Changed to const []
       ),
       extendBodyBehindAppBar: true,
       body: Container(
@@ -249,177 +255,206 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       ),
                     ),
                   )
-                  : SingleChildScrollView(
+                  : ListView(
+                    // Changed from SingleChildScrollView
                     physics:
                         const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20.0,
                       vertical: 15.0,
+                    ).copyWith(
+                      top:
+                          MediaQuery.of(context).padding.top +
+                          kToolbarHeight +
+                          15, // Adjusted padding for AppBar and status bar
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const SizedBox(
-                          height: kToolbarHeight + 15,
-                        ), // Offset for AppBar
-                        Container(
-                          padding: const EdgeInsets.all(15.0),
-                          decoration: BoxDecoration(
-                            color: AppColors.cardBackgroundLight,
-                            borderRadius: BorderRadius.circular(15.0),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                spreadRadius: 2,
-                                blurRadius: 7,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              CircleAvatar(
-                                radius: 50,
-                                backgroundColor: AppColors.primaryGold,
-                                child: Icon(
-                                  Icons.person,
-                                  size: 60,
-                                  color: AppColors.darkBackground,
-                                ),
-                              ),
-                              const SizedBox(height: 15),
-                              Text(
-                                _userProfile?.name ?? 'Guest User',
-                                style: GoogleFonts.playfairDisplay(
-                                  color: AppColors.textDark,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 5),
-                              Text(
-                                _userProfile?.email ?? 'N/A',
-                                style: GoogleFonts.montserrat(
-                                  color: AppColors.subtleText,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              if (_userProfile?.phone != null &&
-                                  _userProfile!.phone!.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 5.0),
-                                  child: Text(
-                                    _userProfile!.phone!,
-                                    style: GoogleFonts.montserrat(
-                                      color: AppColors.subtleText,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                              if (_userProfile?.address != null &&
-                                  _userProfile!.address!.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 5.0),
-                                  child: Text(
-                                    _userProfile!.address!,
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.montserrat(
-                                      color: AppColors.subtleText,
-                                      fontSize: 16,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 25),
-
-                        _buildSectionCard(
-                          cardColor: AppColors.cardBackgroundLight,
-                          children: [
-                            _buildProfileListItem(
-                              icon: Icons.shopping_bag_outlined,
-                              title: 'My Orders',
-                              onTap: () {
-                                _showSnackBar(
-                                  'My Orders Tapped!',
-                                  AppColors.blue,
-                                );
-                                // TODO: Navigate to Orders Screen
-                              },
-                            ),
-                            _buildDivider(AppColors.subtleGrey),
-                            _buildProfileListItem(
-                              icon: Icons.receipt_long,
-                              title: 'Returns & Refunds',
-                              onTap: () {
-                                _showSnackBar(
-                                  'Returns & Refunds Tapped!',
-                                  AppColors.blue,
-                                );
-                                // TODO: Navigate to Returns & Refunds Screen
-                              },
+                    children: [
+                      // Directly provide children to ListView
+                      Container(
+                        padding: const EdgeInsets.all(15.0),
+                        decoration: BoxDecoration(
+                          color: AppColors.cardBackgroundLight,
+                          borderRadius: BorderRadius.circular(15.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              spreadRadius: 2,
+                              blurRadius: 7,
+                              offset: const Offset(0, 3),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 25),
-
-                        _buildSectionCard(
-                          cardColor: AppColors.cardBackgroundLight,
+                        child: Column(
+                          // This inner Column is fine
                           children: [
-                            _buildProfileListItem(
-                              icon: Icons.lock_outline,
-                              title: 'Change Password',
-                              onTap: () {
-                                _showSnackBar(
-                                  'Change Password Tapped!',
-                                  AppColors.blue,
-                                );
-                                // TODO: Navigate to Change Password Screen
-                              },
-                            ),
-                            _buildDivider(AppColors.subtleGrey),
-                            _buildProfileListItem(
-                              icon: Icons.payment,
-                              title: 'Payment Methods',
-                              onTap: () {
-                                _showSnackBar(
-                                  'Payment Methods Tapped!',
-                                  AppColors.blue,
-                                );
-                                // TODO: Navigate to Payment Methods Screen
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 25),
-
-                        // Logout Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _logout,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.redAccent,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                            CircleAvatar(
+                              radius: 50,
+                              backgroundColor: AppColors.primaryGold,
+                              child: const Icon(
+                                // Added const
+                                Icons.person,
+                                size: 60,
+                                color: AppColors.darkBackground,
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 15),
-                              elevation: 5,
                             ),
-                            child: Text(
-                              'Logout',
+                            const SizedBox(height: 15),
+                            Text(
+                              _userProfile?.name ?? 'Guest User',
                               style: GoogleFonts.playfairDisplay(
-                                color: Colors.white,
-                                fontSize: 18,
+                                color: AppColors.textDark,
+                                fontSize: 28,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            const SizedBox(height: 5),
+                            Text(
+                              _userProfile?.email ?? 'N/A',
+                              style: GoogleFonts.montserrat(
+                                color: AppColors.subtleText,
+                                fontSize: 16,
+                              ),
+                            ),
+                            if (_userProfile?.phone != null &&
+                                _userProfile!.phone!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5.0),
+                                child: Text(
+                                  _userProfile!.phone!,
+                                  style: GoogleFonts.montserrat(
+                                    color: AppColors.subtleText,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                            if (_userProfile?.address != null &&
+                                _userProfile!.address!.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5.0),
+                                child: Text(
+                                  _userProfile!.address!,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.montserrat(
+                                    color: AppColors.subtleText,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 25),
+
+                      // Conditional rendering for Admin Panel
+                      if (_isAdminUser) ...[
+                        _buildSectionCard(
+                          cardColor: AppColors.cardBackgroundLight,
+                          children: [
+                            _buildProfileListItem(
+                              icon:
+                                  Icons
+                                      .admin_panel_settings, // Admin-specific icon
+                              title: 'Admin Panel',
+                              onTap: () {
+                                _showSnackBar(
+                                  'Entering Admin Panel!',
+                                  AppColors.primaryGold, // Use a distinct color
+                                );
+                                Navigator.pushNamed(
+                                  context,
+                                  ManageProductsScreen16.id,
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 25), // Space after admin card
+                      ],
+
+                      _buildSectionCard(
+                        cardColor: AppColors.cardBackgroundLight,
+                        children: [
+                          _buildProfileListItem(
+                            icon: Icons.shopping_bag_outlined,
+                            title: 'My Orders',
+                            onTap: () {
+                              _showSnackBar(
+                                'My Orders Tapped!',
+                                AppColors.blue,
+                              );
+                              // TODO: Navigate to Orders Screen
+                            },
+                          ),
+                          _buildDivider(AppColors.subtleGrey),
+                          _buildProfileListItem(
+                            icon: Icons.receipt_long,
+                            title: 'Returns & Refunds',
+                            onTap: () {
+                              _showSnackBar(
+                                'Returns & Refunds Tapped!',
+                                AppColors.blue,
+                              );
+                              // TODO: Navigate to Returns & Refunds Screen
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 25),
+
+                      _buildSectionCard(
+                        cardColor: AppColors.cardBackgroundLight,
+                        children: [
+                          _buildProfileListItem(
+                            icon: Icons.lock_outline,
+                            title: 'Change Password',
+                            onTap: () {
+                              _showSnackBar(
+                                'Change Password Tapped!',
+                                AppColors.blue,
+                              );
+                              // TODO: Navigate to Change Password Screen
+                            },
+                          ),
+                          _buildDivider(AppColors.subtleGrey),
+                          _buildProfileListItem(
+                            icon: Icons.payment,
+                            title: 'Payment Methods',
+                            onTap: () {
+                              _showSnackBar(
+                                'Payment Methods Tapped!',
+                                AppColors.blue,
+                              );
+                              // TODO: Navigate to Payment Methods Screen
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 25),
+
+                      // Logout Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _logout,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.redAccent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            elevation: 5,
+                          ),
+                          child: Text(
+                            'Logout',
+                            style: GoogleFonts.playfairDisplay(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 30),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 30),
+                    ],
                   ),
         ),
       ),

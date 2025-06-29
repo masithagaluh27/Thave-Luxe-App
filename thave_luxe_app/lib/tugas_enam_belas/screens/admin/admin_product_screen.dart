@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart'; // Changed from product_provider.dart
-import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart'; // Ensure Product model is accessible
+
+import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart';
 
 class ManageProductsScreen16 extends StatefulWidget {
-  const ManageProductsScreen16({super.key});
+  // Add a parameter to receive the user's email
+  final String? userEmail;
+
+  const ManageProductsScreen16({super.key, this.userEmail});
   static const String id = '/manageProducts16';
 
   @override
@@ -13,16 +17,23 @@ class ManageProductsScreen16 extends StatefulWidget {
 }
 
 class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
-  final ApiProvider _apiProvider =
-      ApiProvider(); // Changed from ProductProvider
+  final ApiProvider _apiProvider = ApiProvider();
   List<Product> _products = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isAdmin = false; // New flag to store admin status
 
   @override
   void initState() {
     super.initState();
-    _fetchProducts();
+    // Check if the current user is the admin
+    _isAdmin = widget.userEmail == 'admin@gmail.com';
+    if (_isAdmin) {
+      _fetchProducts();
+    } else {
+      _isLoading = false; // Not admin, so no need to load products
+      _errorMessage = 'Access Denied: Only admin users can manage products.';
+    }
   }
 
   Future<void> _fetchProducts() async {
@@ -31,11 +42,22 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
       _errorMessage = null;
     });
     try {
-      final response =
-          await _apiProvider.getProducts(); // Call from ApiProvider
-      setState(() {
-        _products = response.data ?? [];
-      });
+      final response = await _apiProvider.getProducts();
+      if (response.data != null) {
+        if (response.data is List) {
+          _products =
+              (response.data as List)
+                  .map((item) => Product.fromJson(item))
+                  .toList();
+        } else {
+          _errorMessage =
+              "Unexpected product data format received from API. Expected a list.";
+          _products = [];
+        }
+      } else {
+        _errorMessage = "No product data received from API.";
+        _products = [];
+      }
     } on Exception catch (e) {
       setState(() {
         _errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -78,6 +100,14 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
     final TextEditingController imageUrlController = TextEditingController(
       text: productToEdit?.imageUrl,
     );
+    final TextEditingController stockController = TextEditingController(
+      // New stock controller
+      text: productToEdit?.stock?.toString(),
+    );
+    final TextEditingController brandIdController = TextEditingController(
+      // New brandId controller
+      text: productToEdit?.brandId?.toString(),
+    );
 
     final bool isEditing = productToEdit != null;
 
@@ -115,6 +145,20 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                 ),
                 const SizedBox(height: 15),
                 _buildTextField(
+                  stockController, // New field for stock
+                  'Stock Quantity',
+                  Icons.inventory,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 15),
+                _buildTextField(
+                  brandIdController, // New field for brand ID
+                  'Brand ID',
+                  Icons.branding_watermark,
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 15),
+                _buildTextField(
                   descriptionController,
                   'Description',
                   Icons.description,
@@ -138,16 +182,20 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
               onPressed: () async {
                 // Basic validation
                 if (nameController.text.isEmpty ||
-                    priceController.text.isEmpty) {
+                    priceController.text.isEmpty ||
+                    stockController.text.isEmpty ||
+                    brandIdController.text.isEmpty) {
                   _showSnackBar(
-                    'Name and Price cannot be empty.',
+                    'Name, Price, Stock, and Brand ID cannot be empty.',
                     AppColors.redAccent,
                   );
                   return;
                 }
-                if (int.tryParse(priceController.text) == null) {
+                if (int.tryParse(priceController.text) == null ||
+                    int.tryParse(stockController.text) == null ||
+                    int.tryParse(brandIdController.text) == null) {
                   _showSnackBar(
-                    'Price must be a valid number.',
+                    'Price, Stock, and Brand ID must be valid numbers.',
                     AppColors.redAccent,
                   );
                   return;
@@ -170,10 +218,13 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                 try {
                   if (isEditing) {
                     await _apiProvider.updateProduct(
-                      // Call from ApiProvider
-                      id: productToEdit.id!,
+                      id: productToEdit!.id!,
                       name: nameController.text,
                       price: int.parse(priceController.text),
+                      stock: int.parse(stockController.text), // Send stock
+                      brandId: int.parse(
+                        brandIdController.text,
+                      ), // Send brandId
                       description:
                           descriptionController.text.isEmpty
                               ? null
@@ -189,9 +240,12 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                     );
                   } else {
                     await _apiProvider.addProduct(
-                      // Call from ApiProvider
                       name: nameController.text,
                       price: int.parse(priceController.text),
+                      stock: int.parse(stockController.text), // Send stock
+                      brandId: int.parse(
+                        brandIdController.text,
+                      ), // Send brandId
                       description:
                           descriptionController.text.isEmpty
                               ? null
@@ -333,9 +387,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
 
                 try {
                   if (product.id != null) {
-                    await _apiProvider.deleteProduct(
-                      id: product.id!,
-                    ); // Call from ApiProvider
+                    await _apiProvider.deleteProduct(id: product.id!);
                     _showSnackBar(
                       'Product deleted successfully!',
                       AppColors.green,
@@ -375,6 +427,129 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
           ],
         );
       },
+    );
+  }
+
+  // Widget to build individual product cards
+  Widget _buildProductCard(Product product) {
+    return Card(
+      elevation: 4,
+      color: AppColors.cardBackgroundLight,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            // Product Image/Placeholder
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: AppColors.imagePlaceholderLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child:
+                  (product.imageUrl != null &&
+                          product.imageUrl?.isNotEmpty == true)
+                      ? ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          product.imageUrl!,
+                          fit: BoxFit.cover,
+                          width: 70,
+                          height: 70,
+                          errorBuilder: (context, error, stackTrace) {
+                            print(
+                              'Image loading error for URL: ${product.imageUrl}',
+                            );
+                            print('Error: $error');
+                            print('Stack Trace: $stackTrace');
+                            return const Icon(
+                              Icons.image_not_supported_outlined,
+                              color: AppColors.subtleGrey,
+                              size: 30,
+                            );
+                          },
+                        ),
+                      )
+                      : const Icon(
+                        Icons.shopping_bag_outlined,
+                        color: AppColors.subtleGrey,
+                        size: 30,
+                      ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name ?? 'Unknown Product',
+                    style: GoogleFonts.montserrat(
+                      color: AppColors.textDark,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Rp ${product.price?.toStringAsFixed(0) ?? 'N/A'}',
+                    style: GoogleFonts.montserrat(
+                      color: AppColors.primaryGold,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (product.stock != null) // Display stock
+                    Text(
+                      'Stock: ${product.stock}',
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.subtleText,
+                        fontSize: 12,
+                      ),
+                    ),
+                  if (product.brandId != null) // Display brandId
+                    Text(
+                      'Brand ID: ${product.brandId}',
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.subtleText,
+                        fontSize: 12,
+                      ),
+                    ),
+                  if (product.description != null &&
+                      product.description!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        product.description!,
+                        style: GoogleFonts.montserrat(
+                          color: AppColors.subtleText,
+                          fontSize: 12,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit, color: AppColors.blue),
+              onPressed: () => _showProductFormDialog(productToEdit: product),
+              tooltip: 'Edit Product',
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete, color: AppColors.redAccent),
+              onPressed: () => _confirmDelete(product),
+              tooltip: 'Delete Product',
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -436,20 +611,23 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          ElevatedButton(
-                            onPressed: _fetchProducts,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.primaryGold,
-                              foregroundColor: AppColors.darkBackground,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          if (!_isAdmin) // Only show retry if it's not an access denied error
+                            ElevatedButton(
+                              onPressed: _fetchProducts,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGold,
+                                foregroundColor: AppColors.darkBackground,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Retry',
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
-                            child: Text(
-                              'Retry',
-                              style: GoogleFonts.playfairDisplay(fontSize: 16),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -470,133 +648,20 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                     itemCount: _products.length,
                     itemBuilder: (context, index) {
                       final product = _products[index];
-                      return Card(
-                        elevation: 4,
-                        color: AppColors.cardBackgroundLight,
-                        margin: const EdgeInsets.symmetric(vertical: 8.0),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Row(
-                            children: [
-                              // Product Image/Placeholder
-                              Container(
-                                width: 70,
-                                height: 70,
-                                decoration: BoxDecoration(
-                                  color: AppColors.imagePlaceholderLight,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                alignment: Alignment.center,
-                                child:
-                                    (product.imageUrl != null &&
-                                            product.imageUrl!.isNotEmpty)
-                                        ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            8,
-                                          ),
-                                          child: Image.network(
-                                            product.imageUrl!,
-                                            fit: BoxFit.cover,
-                                            width: 70,
-                                            height: 70,
-                                            errorBuilder:
-                                                (
-                                                  context,
-                                                  error,
-                                                  stackTrace,
-                                                ) => const Icon(
-                                                  Icons
-                                                      .image_not_supported_outlined,
-                                                  color: AppColors.subtleGrey,
-                                                  size: 30,
-                                                ),
-                                          ),
-                                        )
-                                        : const Icon(
-                                          Icons.shopping_bag_outlined,
-                                          color: AppColors.subtleGrey,
-                                          size: 30,
-                                        ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      product.name ?? 'Unknown Product',
-                                      style: GoogleFonts.montserrat(
-                                        color: AppColors.textDark,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Rp ${product.price?.toStringAsFixed(0) ?? 'N/A'}',
-                                      style: GoogleFonts.montserrat(
-                                        color: AppColors.primaryGold,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (product.description != null &&
-                                        product.description!.isNotEmpty)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          top: 4.0,
-                                        ),
-                                        child: Text(
-                                          product.description!,
-                                          style: GoogleFonts.montserrat(
-                                            color: AppColors.subtleText,
-                                            fontSize: 12,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.edit,
-                                  color: AppColors.blue,
-                                ),
-                                onPressed:
-                                    () => _showProductFormDialog(
-                                      productToEdit: product,
-                                    ),
-                                tooltip: 'Edit Product',
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.delete,
-                                  color: AppColors.redAccent,
-                                ),
-                                onPressed: () => _confirmDelete(product),
-                                tooltip: 'Delete Product',
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
+                      return _buildProductCard(product);
                     },
                   ),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showProductFormDialog(),
-        backgroundColor: AppColors.primaryGold,
-        tooltip: 'Add New Product',
-        child: const Icon(Icons.add, color: AppColors.darkBackground),
-      ),
+      floatingActionButton:
+          _isAdmin // Only show FAB if user is admin
+              ? FloatingActionButton(
+                onPressed: () => _showProductFormDialog(),
+                backgroundColor: AppColors.primaryGold,
+                child: const Icon(Icons.add, color: AppColors.darkBackground),
+                tooltip: 'Add New Product',
+              )
+              : null, // Hide FAB if not admin
     );
   }
 }

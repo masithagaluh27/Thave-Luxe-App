@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/profile/login_screen_16.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/profile/register_screen_16.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/register_screen_16.dart';
 
 class WelcomeScreen16 extends StatefulWidget {
   const WelcomeScreen16({super.key});

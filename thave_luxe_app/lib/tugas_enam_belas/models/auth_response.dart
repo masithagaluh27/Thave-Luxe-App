@@ -1,13 +1,15 @@
-// lib/tugas_lima_belas/Models/auth_response.dart
 import 'dart:convert';
 
+// Function to parse JSON string into AuthResponse object
 AuthResponse authResponseFromJson(String str) =>
     AuthResponse.fromJson(json.decode(str));
+
+// Function to convert AuthResponse object to JSON string
 String authResponseToJson(AuthResponse data) => json.encode(data.toJson());
 
 class AuthResponse {
-  String? message;
-  AuthData? data;
+  final String? message;
+  final AuthData? data;
 
   AuthResponse({this.message, this.data});
 
@@ -20,8 +22,8 @@ class AuthResponse {
 }
 
 class AuthData {
-  String? token;
-  User? user;
+  final String? token;
+  final User? user;
 
   AuthData({this.token, this.user});
 
@@ -34,12 +36,12 @@ class AuthData {
 }
 
 class User {
-  int? id;
-  String? name;
-  String? email;
-  DateTime? emailVerifiedAt; // Can be null
-  DateTime? createdAt;
-  DateTime? updatedAt;
+  final int? id;
+  final String? name;
+  final String? email;
+  final DateTime? emailVerifiedAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
 
   User({
     this.id,

@@ -1,7 +1,8 @@
-import 'dart:async'; // For Timer
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thave_luxe_app/helper/preference_handler.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/api/auth_provider.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/auth_response.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/homescreen.dart';
@@ -15,6 +16,7 @@ class LoginScreen16 extends StatefulWidget {
 }
 
 class _LoginScreen16State extends State<LoginScreen16> {
+  late final Timer _slideshowTimer; // ✅ Timer disimpan agar bisa dibatalkan
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -24,7 +26,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
   final AuthProvider _authProvider = AuthProvider();
 
   bool _isLoading = false;
-  bool _isPasswordVisible = false; // New state for password visibility
+  bool _isPasswordVisible = false;
 
   final List<String> _imagePaths = [
     'assets/image/model-1.JPEG',
@@ -35,7 +37,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
   @override
   void initState() {
     super.initState();
-    Timer.periodic(const Duration(seconds: 4), (timer) {
+    _slideshowTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
       if (_pageController.hasClients) {
         if (_currentPage < _imagePaths.length - 1) {
           _currentPage++;
@@ -53,6 +55,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
 
   @override
   void dispose() {
+    _slideshowTimer.cancel(); // ✅ hentikan timer agar tidak leak
     _pageController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -65,23 +68,25 @@ class _LoginScreen16State extends State<LoginScreen16> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
+      // AuthProvider.loginUser sudah MENYIMPAN token via SharedPreferences
       final AuthResponse response = await _authProvider.loginUser(
         email: _emailController.text,
         password: _passwordController.text,
       );
+
+      // Pastikan token benar‑benar tersimpan sebelum navigate
+      final savedToken = await PreferenceHandler.getToken();
+      print('DEBUG – token setelah login: $savedToken');
+
       _showSnackBar(response.message ?? "Login successful!", Colors.green);
 
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, HomeScreen16.id);
-      }
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, HomeScreen16.id);
     } on Exception catch (e) {
       print('Login Error: $e');
-
       String errorMessage = "An unexpected error occurred.";
       if (e.toString().contains("Invalid credentials")) {
         errorMessage = "Invalid email or password.";
@@ -92,24 +97,23 @@ class _LoginScreen16State extends State<LoginScreen16> {
       }
       _showSnackBar(errorMessage, Colors.red);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   void _showSnackBar(String message, Color color) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: color,
-          duration: const Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-          margin: const EdgeInsets.all(10),
-        ),
-      );
-    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        duration: const Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(10),
+      ),
+    );
   }
 
   @override
@@ -120,14 +124,13 @@ class _LoginScreen16State extends State<LoginScreen16> {
           PageView.builder(
             controller: _pageController,
             itemCount: _imagePaths.length,
-            itemBuilder: (context, index) {
-              return Image.asset(
-                _imagePaths[index],
-                fit: BoxFit.cover,
-                width: double.infinity,
-                height: double.infinity,
-              );
-            },
+            itemBuilder:
+                (context, index) => Image.asset(
+                  _imagePaths[index],
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  height: double.infinity,
+                ),
           ),
           Container(color: Colors.black.withOpacity(0.5)),
           Center(
@@ -148,7 +151,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
                         'Welcome Back',
                         style: GoogleFonts.playfairDisplay(
                           fontSize: 32,
-                          color: const Color.fromARGB(255, 255, 255, 254),
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -173,6 +176,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
                         controller: _passwordController,
                         isPassword: !_isPasswordVisible,
                         keyboardType: TextInputType.visiblePassword,
+                        textInputAction: TextInputAction.done,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your password';
@@ -182,12 +186,10 @@ class _LoginScreen16State extends State<LoginScreen16> {
                           }
                           return null;
                         },
-
-                        toggleVisibility: () {
-                          setState(() {
-                            _isPasswordVisible = !_isPasswordVisible;
-                          });
-                        },
+                        toggleVisibility:
+                            () => setState(
+                              () => _isPasswordVisible = !_isPasswordVisible,
+                            ),
                         isPasswordType: true,
                         isCurrentPasswordVisible: _isPasswordVisible,
                       ),
@@ -199,7 +201,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
                             ),
                           )
                           : ElevatedButton(
-                            onPressed: _login,
+                            onPressed: _isLoading ? null : _login,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color.fromARGB(
                                 255,
@@ -225,27 +227,21 @@ class _LoginScreen16State extends State<LoginScreen16> {
                           ),
                       const SizedBox(height: 12),
                       TextButton(
-                        onPressed: () {
-                          Navigator.pushNamed(context, '/register16');
-                        },
+                        onPressed:
+                            () => Navigator.pushNamed(context, '/register16'),
                         child: Text.rich(
                           TextSpan(
-                            text: 'Don\'t have an account? ',
+                            text: "Don't have an account? ",
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.85),
                               fontStyle: FontStyle.italic,
                               fontSize: 14,
                             ),
-                            children: <TextSpan>[
+                            children: const [
                               TextSpan(
                                 text: 'Signup',
                                 style: TextStyle(
-                                  color: const Color.fromARGB(
-                                    255,
-                                    180,
-                                    154,
-                                    129,
-                                  ),
+                                  color: Color.fromARGB(255, 180, 154, 129),
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   fontStyle: FontStyle.italic,
@@ -275,12 +271,16 @@ class _LoginScreen16State extends State<LoginScreen16> {
     VoidCallback? toggleVisibility,
     bool isPasswordType = false,
     bool isCurrentPasswordVisible = false,
+    TextInputAction textInputAction = TextInputAction.next,
   }) {
     return TextFormField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
       obscureText: isPassword,
       keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      autocorrect: false,
+      enableSuggestions: false,
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
@@ -288,10 +288,6 @@ class _LoginScreen16State extends State<LoginScreen16> {
         filled: true,
         fillColor: Colors.white.withOpacity(0.1),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
@@ -306,12 +302,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Colors.red, width: 2),
         ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
-        ),
         errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
-
         suffixIcon:
             isPasswordType
                 ? IconButton(

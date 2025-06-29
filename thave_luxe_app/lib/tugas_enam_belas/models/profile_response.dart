@@ -10,7 +10,7 @@ String profileResponseToJson(ProfileResponse data) =>
 
 class ProfileResponse {
   final String? message;
-  final User? data; // Single User object
+  final AppUser? data; // Single AppUser object
   final String? error; // For error messages
 
   ProfileResponse({this.message, this.data, this.error});
@@ -18,7 +18,7 @@ class ProfileResponse {
   factory ProfileResponse.fromJson(Map<String, dynamic> json) =>
       ProfileResponse(
         message: json["message"],
-        data: json["data"] == null ? null : User.fromJson(json["data"]),
+        data: json["data"] == null ? null : AppUser.fromJson(json["data"]),
         error: json["error"],
       );
 
@@ -29,7 +29,7 @@ class ProfileResponse {
   };
 }
 
-class User {
+class AppUser {
   final int? id;
   final String? name;
   final String? email;
@@ -38,7 +38,7 @@ class User {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  User({
+  AppUser({
     this.id,
     this.name,
     this.email,
@@ -48,7 +48,7 @@ class User {
     this.updatedAt,
   });
 
-  factory User.fromJson(Map<String, dynamic> json) => User(
+  factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
     id: json["id"],
     name: json["name"],
     email: json["email"],
@@ -71,8 +71,13 @@ class User {
   };
 
   // Helper method to create a copy with new values (useful for local state updates)
-  User copyWith({String? name, String? email, String? phone, String? address}) {
-    return User(
+  AppUser copyWith({
+    String? name,
+    String? email,
+    String? phone,
+    String? address,
+  }) {
+    return AppUser(
       id: id,
       name: name ?? this.name,
       email: email ?? this.email,
