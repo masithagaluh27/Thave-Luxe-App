@@ -9,7 +9,7 @@ Future<String?> networkImageToBase64(String imageUrl) async {
   try {
     http.Response response = await http.get(Uri.parse(imageUrl));
 
-    // Check if the request was successful (status code 200)
+    // Check if the request was successful (status code 200)s
     if (response.statusCode == 200) {
       Uint8List imageBytes = response.bodyBytes;
       String base64String = base64Encode(imageBytes);

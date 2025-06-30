@@ -606,7 +606,7 @@ class HistoryItem {
   final int? productId;
   final HistoryProduct? product; // Using HistoryProduct
   final int? quantity;
-  final int? price; // Price at the time of checkout
+  final int? price; // Price at the time of checkoutd
   final String? createdAt;
   final String? updatedAt;
 

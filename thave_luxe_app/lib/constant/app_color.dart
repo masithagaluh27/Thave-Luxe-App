@@ -22,7 +22,7 @@ class AppColors {
   static const Color cardBackgroundDark = Color(0xFF2C2C2C);
   static const Color shadowColor = Color(
     0x1A000000,
-  ); // Added for consistent shadows (10% black opacity)
+  ); // Added for consistent shadows (10% black opacity)d
 
   // Status/Action colors
   static const Color errorRed = Color.fromARGB(255, 238, 6, 6);

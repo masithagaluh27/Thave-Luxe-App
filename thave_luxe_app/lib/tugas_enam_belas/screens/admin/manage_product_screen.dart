@@ -389,7 +389,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
         ),
       );
     }
-  }
+  } //comment
 
   Future<void> _pickImages() async {
     final ImagePicker picker = ImagePicker();

@@ -253,7 +253,7 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
             ),
       );
       try {
-        // FIX HERE: Use categoryId: id
+        // FIX HERE: Use categoryId: idj
         final response = await _apiProvider.deleteCategory(categoryId: id);
         if (mounted) Navigator.of(context).pop();
 

@@ -396,6 +396,7 @@ class _ManageBrandsScreen16State extends State<ManageBrandsScreen16> {
           icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
           onPressed: () {
             Navigator.pop(context);
+            //inicomment
           },
         ),
       ),

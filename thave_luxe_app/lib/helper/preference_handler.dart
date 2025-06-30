@@ -57,7 +57,7 @@ class PreferenceHandler {
     return User(id: id, name: name, email: email);
   }
 
-  /// Clears only user-specific details (name, email, id) from SharedPreferences.
+  /// Clears only user-specific details (name, email, id) from sSharedPreferences.
   static Future<void> clearUserDetails() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userNameKey);

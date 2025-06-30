@@ -310,7 +310,7 @@ class ApiProvider {
                 .toList(),
       );
     } catch (e) {
-      // Catch and rethrow, or wrap in ApiResponse.error
+      // Catch and rethrow, or wrap in ApiResponse.errorx
       // Based on your existing _handleResponse, throwing an Exception is consistent
       debugPrint('Error in getBrands: $e');
       throw Exception('Failed to fetch brands: ${e.toString()}');

@@ -102,7 +102,7 @@ class AdminDashboardScreen16 extends StatelessWidget {
                 if (context.mounted) {
                   Navigator.of(
                     context,
-                  ).pop(); // Pop loading indicator on general error
+                  ).pop(); // Pop loading indicator on general errorj
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
