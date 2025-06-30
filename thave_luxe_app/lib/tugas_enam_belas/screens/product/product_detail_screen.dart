@@ -1,21 +1,13 @@
 // lib/tugas_enam_belas/screens/product/product_detail_screen.dart
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
-import 'package:intl/intl.dart';
-
+import 'package:intl/intl.dart'; // For currency formatting
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/add_to_cart_response.dart';
-
-import 'package:thave_luxe_app/tugas_enam_belas/models/cart_list_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/error_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/profile_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/cart_screen.dart';
 import 'package:thave_luxe_app/helper/preference_handler.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart'; // Menggunakan ApiProvider baru
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Menggunakan model tunggal untuk semua model
+import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/cart_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -35,8 +27,6 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen>
     with TickerProviderStateMixin {
-  static const String _baseUrl = 'https://apptoko.mobileprojp.com/public/';
-
   final ApiProvider _apiService = ApiProvider();
 
   int _selectedQuantityToAdd = 1;
@@ -47,19 +37,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   int _currentPageIndex = 0;
   late TabController _tabController;
 
-  Map<int, ProductCategory> _categoriesMap = {};
+  // Menggunakan Category dari app_models.dart
 
-  AppUser? _currentUser;
+  User? _currentUser; // Menggunakan model User dari app_models.dart
 
   bool _isLoadingInitialData = true;
   String? _initialDataErrorMessage;
 
   late String _productName;
-  late String _productBrand;
+  late String _productBrandDisplay;
+  late String _productCategoryDisplay;
   late String _productDescription;
-  late String _displayOriginalPrice;
   late String _displayCurrentPrice;
-  late String _displayDiscount;
   late List<String> _imageUrls;
 
   final NumberFormat _currencyFormatter = NumberFormat.currency(
@@ -75,36 +64,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     _availableStock = widget.product.stock ?? 0;
 
     _productName = widget.product.name ?? 'Unknown Product';
-    _productBrand =
-        widget.brandName ?? widget.product.brand?.name ?? 'Unknown Brand';
+    _productBrandDisplay =
+        widget.brandName ?? widget.product.brandName ?? 'Unknown Brand';
+    _productCategoryDisplay =
+        widget.categoryName ??
+        widget.product.categoryName ??
+        'Unknown Category';
+
     _productDescription =
         widget.product.description ?? 'No description available.';
 
-    final double? productPrice = widget.product.price?.toDouble();
-    final double? productDiscount = 0.0;
-
-    _displayOriginalPrice = _currencyFormatter.format(productPrice ?? 0);
-
-    if (productPrice != null &&
-        productDiscount != null &&
-        productDiscount > 0) {
-      double discountedPrice = productPrice * (1 - (productDiscount / 100));
-      _displayCurrentPrice = _currencyFormatter.format(discountedPrice);
-      _displayDiscount = '${productDiscount.toStringAsFixed(0)}%';
-    } else {
-      _displayCurrentPrice = _currencyFormatter.format(productPrice ?? 0);
-      _displayDiscount = '';
-    }
+    final double productPrice = widget.product.price?.toDouble() ?? 0.0;
+    _displayCurrentPrice = _currencyFormatter.format(productPrice);
 
     _imageUrls = [];
-    if (widget.product.imageUrl != null &&
-        widget.product.imageUrl!.isNotEmpty) {
-      final String fullImageUrl =
-          widget.product.imageUrl!.startsWith('http')
-              ? widget.product.imageUrl!
-              : '$_baseUrl${widget.product.imageUrl}';
-      _imageUrls.add(fullImageUrl);
+    if (widget.product.imageUrls != null &&
+        widget.product.imageUrls!.isNotEmpty) {
+      _imageUrls = List<String>.from(widget.product.imageUrls!);
     } else {
+      _imageUrls.add('https://placehold.co/300x300?text=No+Image');
+    }
+
+    if (_imageUrls.isEmpty) {
       _imageUrls.add('https://placehold.co/300x300?text=No+Image');
     }
 
@@ -141,6 +122,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       await _fetchCategories();
 
       _currentUser = await PreferenceHandler.getUserData();
+      print('Current User: ${_currentUser?.email}');
 
       await _loadCurrentProductCartQuantity();
 
@@ -149,54 +131,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _isLoadingInitialData = false;
         });
       }
-    } on ErrorResponse catch (e) {
-      if (mounted) {
-        setState(() {
-          _initialDataErrorMessage = e.message;
-          _isLoadingInitialData = false;
-        });
-        print('ProductDetail: Error fetching initial data: ${e.message}');
-      }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() {
           _initialDataErrorMessage =
-              'ProductDetail: Failed to load initial data: ${e.toString()}';
+              'ProductDetail: Failed to load initial data: ${e.toString().replaceFirst('Exception: ', '')}';
           _isLoadingInitialData = false;
         });
-        print('ProductDetail: Unexpected error fetching initial data: $e');
+        print('ProductDetail: Error fetching initial data: $e');
       }
     }
   }
 
   Future<void> _fetchCategories() async {
     try {
-      final categoryResponse = await _apiService.getCategories();
       if (mounted) {
-        setState(() {
-          _categoriesMap = {
-            for (var c in categoryResponse.data ?? []) c.id!: c,
-          };
-        });
+        setState(() {});
       }
-    } on ErrorResponse catch (e) {
-      print('ProductDetail: Error fetching categories: ${e.message}');
+    } on Exception catch (e) {
+      print('ProductDetail: Error fetching categories: ${e.toString()}');
       if (mounted) {
         setState(() {
           _initialDataErrorMessage =
               _initialDataErrorMessage != null
-                  ? '${_initialDataErrorMessage}\nCategories: ${e.message}'
-                  : 'Categories: ${e.message}';
-        });
-      }
-    } catch (e) {
-      print('ProductDetail: Unexpected error fetching categories: $e');
-      if (mounted) {
-        setState(() {
-          _initialDataErrorMessage =
-              _initialDataErrorMessage != null
-                  ? '${_initialDataErrorMessage}\nCategories: ${e.toString()}'
-                  : 'Categories: ${e.toString()}';
+                  ? '$_initialDataErrorMessage\nCategories: ${e.toString().replaceFirst('Exception: ', '')}'
+                  : 'Categories: ${e.toString().replaceFirst('Exception: ', '')}';
         });
       }
     }
@@ -211,19 +170,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
     try {
       if (_currentUser?.id != null) {
-        final List<CartItem> cartItems = await _apiService.getCart();
+        final ApiResponse<List<CartItem>> cartResponse =
+            await _apiService.getCart();
+        final List<CartItem> cartItems = cartResponse.data ?? [];
 
-        final CartItem? existingCartItem = cartItems.firstWhere(
-          (item) => item.product?.id == productId,
-          orElse: () => CartItem(),
+        final CartItem existingCartItem = cartItems.firstWhere(
+          (item) => item.productId == productId,
+          orElse: () => CartItem(quantity: 0),
         );
 
         if (!mounted) return;
         setState(() {
-          _currentProductInCartQuantity = existingCartItem?.quantity ?? 0;
+          _currentProductInCartQuantity = existingCartItem.quantity ?? 0;
           _selectedQuantityToAdd =
               (_currentProductInCartQuantity >= _availableStock) ? 0 : 1;
+          if (_availableStock == 0) {
+            _selectedQuantityToAdd = 0;
+          }
         });
+        print(
+          'Current product in cart quantity: $_currentProductInCartQuantity',
+        );
       } else {
         if (!mounted) return;
         setState(() {
@@ -231,10 +198,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           _selectedQuantityToAdd = _availableStock > 0 ? 1 : 0;
         });
       }
-    } on ErrorResponse catch (e) {
-      _showError('Could not load current cart status: ${e.message}');
-    } catch (e) {
-      _showError('An unexpected error occurred: $e');
+    } on Exception catch (e) {
+      _showError(
+        'Could not load current cart status: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
     }
   }
 
@@ -256,15 +223,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final int? productId = widget.product.id;
 
     if (productId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Error: Product ID is invalid.',
-            style: GoogleFonts.montserrat(color: AppColors.lightText),
-          ),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
+      _showError('Error: Product ID is invalid.');
       return;
     }
 
@@ -323,7 +282,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     );
 
     try {
-      final AddToCartResponse response = await _apiService.addToCart(
+      final ApiResponse<CartItem> response = await _apiService.addToCart(
         productId: productId,
         quantity: _selectedQuantityToAdd,
       );
@@ -333,7 +292,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            response.message ?? 'Success',
+            response.message ?? 'Product added to cart successfully!',
             style: GoogleFonts.montserrat(color: AppColors.lightText),
           ),
           backgroundColor: AppColors.successGreen,
@@ -346,30 +305,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         context,
         MaterialPageRoute(builder: (context) => const CartScreen16()),
       );
-    } on ErrorResponse catch (e) {
+    } on Exception catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Failed to add to cart: ${e.message}',
+            'Failed to add to cart: ${e.toString().replaceFirst('Exception: ', '')}',
             style: GoogleFonts.montserrat(color: AppColors.lightText),
           ),
           backgroundColor: AppColors.errorRed,
         ),
       );
-      print('Add to Cart Error: ${e.message}');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'An unexpected error occurred: ${e.toString()}',
-            style: GoogleFonts.montserrat(color: AppColors.lightText),
-          ),
-          backgroundColor: AppColors.errorRed,
-        ),
-      );
-      print('Unexpected Add to Cart Error: $e');
+      print('Add to Cart Error: $e');
     }
   }
 
@@ -411,7 +358,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         _buildQuantityButton(
           Icons.add,
           onPressed:
-              _selectedQuantityToAdd < maxQuantityCanAdd
+              _selectedQuantityToAdd < maxQuantityCanAdd && _availableStock > 0
                   ? () {
                     setState(() {
                       _selectedQuantityToAdd++;
@@ -480,8 +427,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             color: AppColors.lightText,
           ),
           onPressed: () async {
-            final AppUser? user = await PreferenceHandler.getUserData();
-
+            final User? user = await PreferenceHandler.getUserData();
             if (user == null) {
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
@@ -527,7 +473,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, color: AppColors.errorRed, size: 60),
+                const Icon(
+                  Icons.error_outline,
+                  color: AppColors.errorRed,
+                  size: 60,
+                ),
                 const SizedBox(height: 20),
                 Text(
                   _initialDataErrorMessage!,
@@ -565,28 +515,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       );
     }
 
-    final String category =
-        widget.categoryName ??
-        widget.product.category?.name ??
-        _categoriesMap[widget.product.categoryId]?.name ??
-        'Unknown Category';
+    // `category` variable is now `_productCategoryDisplay` which is initialized in initState.
+    // The previous line was redundant and could be removed.
+    // final String category = widget.categoryName ?? widget.product.category?.name ?? _categoriesMap[widget.product.categoryId]?.name ?? 'Unknown Category';
+    final String category = _productCategoryDisplay;
 
-    final bool canAddToCart =
-        _selectedQuantityToAdd > 0 &&
-        (_selectedQuantityToAdd + _currentProductInCartQuantity) <=
-            _availableStock &&
-        _availableStock > 0;
-
+    // Cek kondisi untuk tombol "Add to Cart"
+    bool canAddToCart = false;
     String addToCartButtonText;
+
     if (_availableStock == 0) {
       addToCartButtonText = 'Out of Stock';
+      canAddToCart = false;
     } else if (_currentProductInCartQuantity >= _availableStock) {
       addToCartButtonText = 'Already Max In Cart';
-    } else if (_selectedQuantityToAdd == 0 &&
-        _currentProductInCartQuantity < _availableStock) {
+      canAddToCart = false;
+    } else if (_selectedQuantityToAdd == 0) {
       addToCartButtonText = 'Select Quantity';
+      canAddToCart = false;
     } else {
       addToCartButtonText = 'Add to Cart';
+      canAddToCart = true;
     }
 
     return Scaffold(
@@ -685,7 +634,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      '$_productBrand · $category',
+                      '$_productBrandDisplay · $category',
                       style: GoogleFonts.montserrat(
                         fontSize: 16,
                         color: AppColors.subtleText,
@@ -704,19 +653,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     const SizedBox(height: 10),
                     Row(
                       children: <Widget>[
-                        if (_displayOriginalPrice.isNotEmpty &&
-                            _displayOriginalPrice != _displayCurrentPrice)
-                          Text(
-                            _displayOriginalPrice,
-                            style: GoogleFonts.montserrat(
-                              fontSize: 18,
-                              color: AppColors.subtleText,
-                              decoration: TextDecoration.lineThrough,
-                            ),
-                          ),
-                        SizedBox(
-                          width: _displayOriginalPrice.isNotEmpty ? 10 : 0,
-                        ),
                         Text(
                           _displayCurrentPrice,
                           style: GoogleFonts.playfairDisplay(
@@ -725,26 +661,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             color: AppColors.primaryGold,
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        if (_displayDiscount.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.accentBlue,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '$_displayDiscount Off',
-                              style: GoogleFonts.montserrat(
-                                color: AppColors.lightText,
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
                     const SizedBox(height: 20),

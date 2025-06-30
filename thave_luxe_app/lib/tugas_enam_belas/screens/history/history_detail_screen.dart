@@ -1,28 +1,32 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
-
+import 'package:intl/intl.dart';
 // Adjust these paths to your actual project structure
 import 'package:thave_luxe_app/constant/app_color.dart'; // Your AppColors
-import 'package:thave_luxe_app/tugas_enam_belas/models/history_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Import model tunggal app_models.dart
 import 'package:thave_luxe_app/tugas_enam_belas/screens/homescreen.dart';
 
 class HistoryDetailScreen extends StatelessWidget {
-  final HistoryItem historyItem; // The specific history item to display
+  // Mengubah tipe historyItem dari HistoryItem menjadi History
+  final History historyItem; // The specific history item to display
 
   const HistoryDetailScreen({super.key, required this.historyItem});
 
   static const String id = '/detailhistory';
 
-  static const String _baseUrl =
-      'https://apptoko.mobileprojp.com/public/'; // Base URL for images
+  // Base URL for images (this should point to your public asset directory)
+  // Keep this consistent with where your images are actually served from.
+  static const String _publicBaseUrl =
+      'https://apptoko.mobileprojp.com/public/';
 
   @override
   Widget build(BuildContext context) {
     // Format date if available
     final String formattedDate =
         historyItem.createdAt != null
-            ? DateFormat('MMMM dd, yyyy').format(historyItem.createdAt!)
+            ? DateFormat(
+              'MMMM dd, yyyy',
+            ).format(DateTime.parse(historyItem.createdAt!))
             : 'N/A';
 
     // Initialize NumberFormat for Rupiah (IDR) with dot as thousands separator
@@ -33,14 +37,10 @@ class HistoryDetailScreen extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor:
-          AppColors.backgroundLight, // Using your app's background color
+      backgroundColor: AppColors.backgroundLight,
       appBar: _buildAppBar(context),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 20.0,
-          vertical: 15.0,
-        ), // Consistent padding
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
@@ -51,19 +51,17 @@ class HistoryDetailScreen extends StatelessWidget {
                   Text(
                     'Order ID: ${historyItem.id ?? 'N/A'}',
                     style: GoogleFonts.playfairDisplay(
-                      // Luxury font for prominent text
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textDark, // Consistent dark text
+                      color: AppColors.textDark,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     formattedDate,
                     style: GoogleFonts.montserrat(
-                      // Standard font for details
                       fontSize: 15,
-                      color: AppColors.subtleText, // Consistent grey text
+                      color: AppColors.subtleText,
                     ),
                   ),
                 ],
@@ -79,7 +77,7 @@ class HistoryDetailScreen extends StatelessWidget {
                   icon: Icons.picture_as_pdf_outlined,
                   text: 'PDF Receipt',
                   onTap:
-                      () => print(
+                      () => debugPrint(
                         'PDF Receipt clicked for Order ID ${historyItem.id}',
                       ),
                 ),
@@ -88,8 +86,9 @@ class HistoryDetailScreen extends StatelessWidget {
                   icon: Icons.share_outlined,
                   text: 'Share',
                   onTap:
-                      () =>
-                          print('Share clicked for Order ID ${historyItem.id}'),
+                      () => debugPrint(
+                        'Share clicked for Order ID ${historyItem.id}',
+                      ),
                 ),
               ],
             ),
@@ -103,7 +102,7 @@ class HistoryDetailScreen extends StatelessWidget {
                 _buildDetailRow(
                   'Amount',
                   currencyFormatter.format(historyItem.total ?? 0),
-                  isAmount: true, // Mark this row for special styling
+                  isAmount: true,
                 ),
                 _buildDetailRow(
                   'Order number',
@@ -126,12 +125,16 @@ class HistoryDetailScreen extends StatelessWidget {
                   historyItem.items?.map((item) {
                     final productName = item.product?.name ?? 'Unknown Product';
                     final quantity = item.quantity ?? 0;
-                    final originalPrice = item.product?.price ?? 0;
-                    final discount = item.product?.discount;
+                    // Menggunakan price dari HistoryItem (harga saat checkout)
+                    final originalPrice = item.price ?? 0;
+                    // Menggunakan discount dari HistoryProduct
+                    final dynamic discountRaw = item.product?.discount;
+                    double discount =
+                        (discountRaw is num) ? discountRaw.toDouble() : 0.0;
 
                     // Calculate price after discount
                     double priceAfterDiscount = originalPrice.toDouble();
-                    if (discount != null && discount > 0) {
+                    if (discount > 0) {
                       priceAfterDiscount =
                           originalPrice * (1 - (discount / 100));
                     }
@@ -140,20 +143,22 @@ class HistoryDetailScreen extends StatelessWidget {
                       priceAfterDiscount * quantity,
                     );
 
-                    // Determine image URL
-                    String? rawImageUrl = item.product?.imageUrl;
+                    // Determine image URL from HistoryProduct.imageUrls
                     String imageUrlToDisplay;
-
-                    if (rawImageUrl != null && rawImageUrl.isNotEmpty) {
-                      if (rawImageUrl.startsWith('http://') ||
-                          rawImageUrl.startsWith('https://')) {
-                        imageUrlToDisplay = rawImageUrl;
+                    if (item.product?.imageUrls != null &&
+                        item.product!.imageUrls!.isNotEmpty) {
+                      final firstImageUrl = item.product!.imageUrls!.first;
+                      if (firstImageUrl.startsWith('http://') ||
+                          firstImageUrl.startsWith('https://')) {
+                        imageUrlToDisplay = firstImageUrl;
                       } else {
-                        imageUrlToDisplay = '$_baseUrl$rawImageUrl';
+                        // Assuming images are in the public/ directory, potentially /public/images/
+                        imageUrlToDisplay =
+                            '$_publicBaseUrl${firstImageUrl.startsWith('images/') ? firstImageUrl : 'images/$firstImageUrl'}';
                       }
                     } else {
                       imageUrlToDisplay =
-                          'https://via.placeholder.com/80x80/${AppColors.primaryGold.value.toRadixString(16).substring(2, 8).toUpperCase()}/FFFFFF?text=Product'; // Using primaryGold for placeholder
+                          'https://via.placeholder.com/80x80/${AppColors.primaryGold.value.toRadixString(16).substring(2, 8).toUpperCase()}/FFFFFF?text=Product';
                     }
 
                     return Padding(
@@ -166,9 +171,7 @@ class HistoryDetailScreen extends StatelessWidget {
                             height: 80,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              color:
-                                  AppColors
-                                      .imagePlaceholderLight, // Use dedicated placeholder color
+                              color: AppColors.imagePlaceholderLight,
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(10),
@@ -177,14 +180,13 @@ class HistoryDetailScreen extends StatelessWidget {
                                 fit: BoxFit.cover,
                                 errorBuilder:
                                     (context, error, stackTrace) => Container(
-                                      color:
-                                          AppColors
-                                              .imagePlaceholderLight, // Fallback placeholder color
+                                      color: AppColors.imagePlaceholderLight,
                                       child: Center(
                                         child: Icon(
                                           Icons.broken_image,
                                           color: AppColors.subtleGrey,
-                                        ), // Subtle broken image icon
+                                          size: 30,
+                                        ),
                                       ),
                                     ),
                               ),
@@ -206,7 +208,7 @@ class HistoryDetailScreen extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 4),
-                                if (discount != null && discount > 0) ...[
+                                if (discount > 0) ...[
                                   Text(
                                     currencyFormatter.format(originalPrice),
                                     style: GoogleFonts.montserrat(
@@ -225,14 +227,12 @@ class HistoryDetailScreen extends StatelessWidget {
                                     color: AppColors.textDark,
                                   ),
                                 ),
-                                if (discount != null && discount > 0)
+                                if (discount > 0)
                                   Text(
                                     '${discount.toInt()}% Off',
                                     style: GoogleFonts.montserrat(
                                       fontSize: 11,
-                                      color:
-                                          AppColors
-                                              .green, // Using AppColors.green for discounts
+                                      color: AppColors.green,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -250,9 +250,7 @@ class HistoryDetailScreen extends StatelessWidget {
                                   style: GoogleFonts.montserrat(
                                     fontSize: 15,
                                     fontWeight: FontWeight.bold,
-                                    color:
-                                        AppColors
-                                            .primaryGold, // Primary gold for subtotal
+                                    color: AppColors.primaryGold,
                                   ),
                                 ),
                               ],
@@ -307,14 +305,13 @@ class HistoryDetailScreen extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 40), // Space before bottom button
+            const SizedBox(height: 40),
             // Back to Home Button
             SizedBox(
               width: double.infinity,
-              height: 55, // Slightly reduced height for sleekness
+              height: 55,
               child: ElevatedButton(
                 onPressed: () {
-                  // Pop all routes until the MainNavigationScreen is reached
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(
                       builder: (context) => const HomeScreen16(),
@@ -323,65 +320,51 @@ class HistoryDetailScreen extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      AppColors.primaryGold, // Gold button background
-                  foregroundColor:
-                      AppColors.darkBackground, // Dark text on gold button
+                  backgroundColor: AppColors.primaryGold,
+                  foregroundColor: AppColors.darkBackground,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      12,
-                    ), // Consistent border radius
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
                 child: Text(
                   'Back to Home',
                   style: GoogleFonts.playfairDisplay(
-                    // Luxury font for button text
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 20), // Padding for bottom of screen
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
 
-  // Custom AppBar for the History Detail Screen
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.transparent, // Transparent background
-      elevation: 0, // No shadow
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios,
-          color: AppColors.textDark,
-        ), // Consistent back button color
+        icon: const Icon(Icons.arrow_back_ios, color: AppColors.textDark),
         onPressed: () {
-          Navigator.pop(
-            context,
-          ); // Go back to the previous screen (HistoryScreen)
+          Navigator.pop(context);
         },
       ),
       title: Text(
         'Order Details',
         style: GoogleFonts.playfairDisplay(
-          // Luxury font for title
           color: AppColors.textDark,
-          fontSize: 24, // Larger title font
+          fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
       ),
       centerTitle: true,
-      // Removed notification icon to match the luxury app aesthetic (often minimal icons)
       actions: const <Widget>[],
     );
   }
 
-  // Helper widget for PDF Receipt and Share buttons
   Widget _buildActionButton({
     required IconData icon,
     required String text,
@@ -392,15 +375,12 @@ class HistoryDetailScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.cardBackgroundLight, // Card background color
-          borderRadius: BorderRadius.circular(12), // Consistent border radius
-          border: Border.all(
-            color: AppColors.subtleGrey.withOpacity(0.5),
-          ), // Subtle border
+          color: AppColors.cardBackgroundLight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.subtleGrey.withOpacity(0.5)),
           boxShadow: [
-            // Consistent shadow
             BoxShadow(
-              color: AppColors.shadowColor, // Using your defined shadowColor
+              color: AppColors.shadowColor,
               blurRadius: 7,
               offset: const Offset(0, 3),
             ),
@@ -408,12 +388,11 @@ class HistoryDetailScreen extends StatelessWidget {
         ),
         child: Row(
           children: <Widget>[
-            Icon(icon, color: AppColors.primaryGold, size: 24), // Gold icon
+            Icon(icon, color: AppColors.primaryGold, size: 24),
             const SizedBox(width: 8),
             Text(
               text,
               style: GoogleFonts.montserrat(
-                // Consistent font
                 color: AppColors.textDark,
                 fontWeight: FontWeight.w500,
                 fontSize: 15,
@@ -425,14 +404,12 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget for section titles (e.g., Payment Details, Order Details)
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         title,
         style: GoogleFonts.playfairDisplay(
-          // Luxury font for section titles
           fontSize: 22,
           fontWeight: FontWeight.bold,
           color: AppColors.textDark,
@@ -441,17 +418,15 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget for a card containing details (Payment Details, Order Details)
   Widget _buildDetailCard({required List<Widget> children}) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardBackgroundLight, // Card background color
-        borderRadius: BorderRadius.circular(15), // Consistent border radius
+        color: AppColors.cardBackgroundLight,
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          // Consistent shadow
           BoxShadow(
-            color: AppColors.shadowColor, // Using your defined shadowColor
+            color: AppColors.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -461,12 +436,11 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget for a single row of detail (e.g., Amount: $960.00)
   Widget _buildDetailRow(
     String label,
     String value, {
     bool isMultiLine = false,
-    bool isAmount = false, // New parameter to apply special style for amount
+    bool isAmount = false,
   }) {
     return Padding(
       padding:
@@ -484,7 +458,7 @@ class HistoryDetailScreen extends StatelessWidget {
               style: GoogleFonts.montserrat(
                 fontSize: 16,
                 color: AppColors.subtleText,
-              ), // Consistent text
+              ),
             ),
           ),
           Flexible(
@@ -492,17 +466,16 @@ class HistoryDetailScreen extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style:
-                  isAmount // Apply special style if it's the amount row
+                  isAmount
                       ? GoogleFonts.playfairDisplay(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color:
-                            AppColors.primaryGold, // Gold for the total amount
+                        color: AppColors.primaryGold,
                       )
                       : GoogleFonts.montserrat(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textDark, // Dark text for other values
+                        color: AppColors.textDark,
                       ),
             ),
           ),
@@ -511,17 +484,15 @@ class HistoryDetailScreen extends StatelessWidget {
     );
   }
 
-  // Helper widget for address cards
   Widget _buildAddressCard(String address) {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: AppColors.cardBackgroundLight, // Card background color
-        borderRadius: BorderRadius.circular(15), // Consistent border radius
+        color: AppColors.cardBackgroundLight,
+        borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          // Consistent shadow
           BoxShadow(
-            color: AppColors.shadowColor, // Using your defined shadowColor
+            color: AppColors.shadowColor,
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -533,7 +504,7 @@ class HistoryDetailScreen extends StatelessWidget {
           fontSize: 14,
           color: AppColors.subtleText,
           height: 1.5,
-        ), // Consistent text
+        ),
       ),
     );
   }

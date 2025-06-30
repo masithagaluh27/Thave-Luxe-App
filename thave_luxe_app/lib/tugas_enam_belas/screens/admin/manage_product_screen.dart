@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
-
-import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
 
 class ManageProductsScreen16 extends StatefulWidget {
-  // Add a parameter to receive the user's email
   final String? userEmail;
 
   const ManageProductsScreen16({super.key, this.userEmail});
@@ -21,17 +20,22 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
   List<Product> _products = [];
   bool _isLoading = true;
   String? _errorMessage;
-  bool _isAdmin = false; // New flag to store admin status
+  bool _isAdmin = false;
+
+  final NumberFormat _currencyFormatter = NumberFormat.currency(
+    locale: 'id_ID',
+    symbol: 'Rp',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
     super.initState();
-    // Check if the current user is the admin
     _isAdmin = widget.userEmail == 'admin@gmail.com';
     if (_isAdmin) {
       _fetchProducts();
     } else {
-      _isLoading = false; // Not admin, so no need to load products
+      _isLoading = false;
       _errorMessage = 'Access Denied: Only admin users can manage products.';
     }
   }
@@ -44,18 +48,10 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
     try {
       final response = await _apiProvider.getProducts();
       if (response.data != null) {
-        if (response.data is List) {
-          _products =
-              (response.data as List)
-                  .map((item) => Product.fromJson(item))
-                  .toList();
-        } else {
-          _errorMessage =
-              "Unexpected product data format received from API. Expected a list.";
-          _products = [];
-        }
+        _products = response.data!;
       } else {
-        _errorMessage = "No product data received from API.";
+        _errorMessage =
+            response.message ?? "No product data received from API.";
         _products = [];
       }
     } on Exception catch (e) {
@@ -89,31 +85,36 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
   // Function to show Add/Edit Product dialog
   Future<void> _showProductFormDialog({Product? productToEdit}) async {
     final TextEditingController nameController = TextEditingController(
-      text: productToEdit?.name,
+      text: productToEdit?.name ?? '',
     );
     final TextEditingController priceController = TextEditingController(
-      text: productToEdit?.price?.toString(),
+      text: productToEdit?.price?.toString() ?? '',
     );
     final TextEditingController descriptionController = TextEditingController(
-      text: productToEdit?.description,
+      text: productToEdit?.description ?? '',
     );
     final TextEditingController imageUrlController = TextEditingController(
-      text: productToEdit?.imageUrl,
+      text:
+          productToEdit?.imageUrls != null &&
+                  productToEdit!.imageUrls!.isNotEmpty
+              ? productToEdit.imageUrls!.first
+              : '',
     );
     final TextEditingController stockController = TextEditingController(
-      // New stock controller
-      text: productToEdit?.stock?.toString(),
+      text: productToEdit?.stock?.toString() ?? '',
     );
     final TextEditingController brandIdController = TextEditingController(
-      // New brandId controller
-      text: productToEdit?.brandId?.toString(),
+      text: productToEdit?.brandId?.toString() ?? '',
+    );
+    final TextEditingController discountController = TextEditingController(
+      text: productToEdit?.discount?.toString() ?? '',
     );
 
     final bool isEditing = productToEdit != null;
 
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // User must tap button to close
+      barrierDismissible: false,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           backgroundColor: AppColors.darkBackground,
@@ -145,14 +146,14 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                 ),
                 const SizedBox(height: 15),
                 _buildTextField(
-                  stockController, // New field for stock
+                  stockController,
                   'Stock Quantity',
                   Icons.inventory,
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 15),
                 _buildTextField(
-                  brandIdController, // New field for brand ID
+                  brandIdController,
                   'Brand ID',
                   Icons.branding_watermark,
                   keyboardType: TextInputType.number,
@@ -165,6 +166,13 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                 ),
                 const SizedBox(height: 15),
                 _buildTextField(imageUrlController, 'Image URL', Icons.image),
+                const SizedBox(height: 15),
+                _buildTextField(
+                  discountController,
+                  'Discount (optional)',
+                  Icons.discount,
+                  keyboardType: TextInputType.number,
+                ),
               ],
             ),
           ),
@@ -180,7 +188,6 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // Basic validation
                 if (nameController.text.isEmpty ||
                     priceController.text.isEmpty ||
                     stockController.text.isEmpty ||
@@ -201,7 +208,18 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                   return;
                 }
 
-                // Show loading indicator
+                double? discountValue;
+                if (discountController.text.isNotEmpty) {
+                  discountValue = double.tryParse(discountController.text);
+                  if (discountValue == null) {
+                    _showSnackBar(
+                      'Discount must be a valid number.',
+                      AppColors.redAccent,
+                    );
+                    return;
+                  }
+                }
+
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -216,23 +234,26 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                 );
 
                 try {
+                  List<String>? imageUrlsToSend;
+                  if (imageUrlController.text.isNotEmpty) {
+                    imageUrlsToSend = [imageUrlController.text];
+                  }
+
                   if (isEditing) {
                     await _apiProvider.updateProduct(
-                      id: productToEdit!.id!,
+                      productId: productToEdit.id!,
                       name: nameController.text,
                       price: int.parse(priceController.text),
-                      stock: int.parse(stockController.text), // Send stock
-                      brandId: int.parse(
-                        brandIdController.text,
-                      ), // Send brandId
-                      description:
-                          descriptionController.text.isEmpty
-                              ? null
-                              : descriptionController.text,
-                      imageUrl:
-                          imageUrlController.text.isEmpty
-                              ? null
-                              : imageUrlController.text,
+                      stock: int.parse(stockController.text),
+                      brandId: int.parse(brandIdController.text),
+                      // Fixed: Always send a non-nullable string for description
+                      // If your API's update endpoint truly accepts 'null' for
+                      // description, you'll need to change the APIProvider's
+                      // updateProduct signature for 'description' to 'String?'
+                      // If it expects String, sending empty string is the safe fallback.
+                      description: descriptionController.text,
+                      images: imageUrlsToSend,
+                      discount: discountValue,
                     );
                     _showSnackBar(
                       'Product updated successfully!',
@@ -242,30 +263,22 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                     await _apiProvider.addProduct(
                       name: nameController.text,
                       price: int.parse(priceController.text),
-                      stock: int.parse(stockController.text), // Send stock
-                      brandId: int.parse(
-                        brandIdController.text,
-                      ), // Send brandId
-                      description:
-                          descriptionController.text.isEmpty
-                              ? null
-                              : descriptionController.text,
-                      imageUrl:
-                          imageUrlController.text.isEmpty
-                              ? null
-                              : imageUrlController.text,
+                      stock: int.parse(stockController.text),
+                      brandId: int.parse(brandIdController.text),
+                      description: descriptionController.text,
+                      images: imageUrlsToSend,
+                      discount: discountValue,
                     );
                     _showSnackBar(
                       'Product added successfully!',
                       AppColors.green,
                     );
                   }
-                  if (mounted) Navigator.of(context).pop(); // Dismiss loading
-                  if (mounted)
-                    Navigator.of(dialogContext).pop(); // Dismiss form dialog
-                  _fetchProducts(); // Refresh the list
+                  if (mounted) Navigator.of(context).pop();
+                  if (mounted) Navigator.of(dialogContext).pop();
+                  _fetchProducts();
                 } on Exception catch (e) {
-                  if (mounted) Navigator.of(context).pop(); // Dismiss loading
+                  if (mounted) Navigator.of(context).pop();
                   _showSnackBar(
                     'Operation failed: ${e.toString().replaceFirst('Exception: ', '')}',
                     AppColors.redAccent,
@@ -310,12 +323,10 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
         hintStyle: GoogleFonts.montserrat(color: AppColors.subtleGrey),
         prefixIcon: Icon(icon, color: AppColors.subtleGrey),
         filled: true,
-        fillColor: AppColors.searchBarBackground.withOpacity(
-          0.2,
-        ), // Darker input field background
+        fillColor: AppColors.searchBarBackground.withOpacity(0.2),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none, // No border for cleaner look
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -368,10 +379,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
             ),
             ElevatedButton(
               onPressed: () async {
-                Navigator.of(
-                  dialogContext,
-                ).pop(); // Dismiss confirmation dialog
-                // Show loading indicator
+                Navigator.of(dialogContext).pop();
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -387,12 +395,12 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
 
                 try {
                   if (product.id != null) {
-                    await _apiProvider.deleteProduct(id: product.id!);
+                    await _apiProvider.deleteProduct(productId: product.id!);
                     _showSnackBar(
                       'Product deleted successfully!',
                       AppColors.green,
                     );
-                    _fetchProducts(); // Refresh the list
+                    _fetchProducts();
                   } else {
                     _showSnackBar(
                       'Cannot delete: Product ID is null.',
@@ -405,7 +413,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                     AppColors.redAccent,
                   );
                 } finally {
-                  if (mounted) Navigator.of(context).pop(); // Dismiss loading
+                  if (mounted) Navigator.of(context).pop();
                 }
               },
               style: ElevatedButton.styleFrom(
@@ -432,6 +440,11 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
 
   // Widget to build individual product cards
   Widget _buildProductCard(Product product) {
+    final String imageUrlToDisplay =
+        product.imageUrls != null && product.imageUrls!.isNotEmpty
+            ? product.imageUrls!.first
+            : '';
+
     return Card(
       elevation: 4,
       color: AppColors.cardBackgroundLight,
@@ -441,7 +454,6 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
         padding: const EdgeInsets.all(12.0),
         child: Row(
           children: [
-            // Product Image/Placeholder
             Container(
               width: 70,
               height: 70,
@@ -451,21 +463,20 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
               ),
               alignment: Alignment.center,
               child:
-                  (product.imageUrl != null &&
-                          product.imageUrl?.isNotEmpty == true)
+                  imageUrlToDisplay.isNotEmpty
                       ? ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: Image.network(
-                          product.imageUrl!,
+                          imageUrlToDisplay,
                           fit: BoxFit.cover,
                           width: 70,
                           height: 70,
                           errorBuilder: (context, error, stackTrace) {
-                            print(
-                              'Image loading error for URL: ${product.imageUrl}',
+                            debugPrint(
+                              'Image loading error for URL: $imageUrlToDisplay',
                             );
-                            print('Error: $error');
-                            print('Stack Trace: $stackTrace');
+                            debugPrint('Error: $error');
+                            debugPrint('Stack Trace: $stackTrace');
                             return const Icon(
                               Icons.image_not_supported_outlined,
                               color: AppColors.subtleGrey,
@@ -497,14 +508,14 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Rp ${product.price?.toStringAsFixed(0) ?? 'N/A'}',
+                    _currencyFormatter.format(product.price ?? 0),
                     style: GoogleFonts.montserrat(
                       color: AppColors.primaryGold,
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  if (product.stock != null) // Display stock
+                  if (product.stock != null)
                     Text(
                       'Stock: ${product.stock}',
                       style: GoogleFonts.montserrat(
@@ -512,7 +523,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                         fontSize: 12,
                       ),
                     ),
-                  if (product.brandId != null) // Display brandId
+                  if (product.brandId != null)
                     Text(
                       'Brand ID: ${product.brandId}',
                       style: GoogleFonts.montserrat(
@@ -532,6 +543,15 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  if (product.discount != null)
+                    Text(
+                      'Discount: ${product.discount}%',
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.redAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                 ],
@@ -584,7 +604,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
           ),
         ),
         child: RefreshIndicator(
-          onRefresh: _fetchProducts,
+          onRefresh: _isAdmin ? _fetchProducts : () async {},
           color: AppColors.primaryGold,
           child:
               _isLoading
@@ -611,7 +631,34 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                             ),
                           ),
                           const SizedBox(height: 20),
-                          if (!_isAdmin) // Only show retry if it's not an access denied error
+                          if (_isAdmin &&
+                              _errorMessage!.contains('Unauthorized'))
+                            ElevatedButton(
+                              onPressed: () {
+                                _showSnackBar(
+                                  'Please re-login as admin.',
+                                  AppColors.orange,
+                                );
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/login16',
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGold,
+                                foregroundColor: AppColors.darkBackground,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Text(
+                                'Login as Admin',
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 16,
+                                ),
+                              ),
+                            )
+                          else if (_isAdmin)
                             ElevatedButton(
                               onPressed: _fetchProducts,
                               style: ElevatedButton.styleFrom(
@@ -654,14 +701,14 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
         ),
       ),
       floatingActionButton:
-          _isAdmin // Only show FAB if user is admin
+          _isAdmin
               ? FloatingActionButton(
                 onPressed: () => _showProductFormDialog(),
                 backgroundColor: AppColors.primaryGold,
-                child: const Icon(Icons.add, color: AppColors.darkBackground),
                 tooltip: 'Add New Product',
+                child: const Icon(Icons.add, color: AppColors.darkBackground),
               )
-              : null, // Hide FAB if not admin
+              : null,
     );
   }
 }

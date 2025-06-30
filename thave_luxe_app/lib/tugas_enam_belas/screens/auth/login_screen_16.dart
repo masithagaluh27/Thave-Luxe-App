@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/helper/preference_handler.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/auth_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/auth_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/homescreen.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/homescreen.dart'; // Import model tunggal app_models.dart
 
 class LoginScreen16 extends StatefulWidget {
   const LoginScreen16({super.key});
@@ -16,22 +17,22 @@ class LoginScreen16 extends StatefulWidget {
 }
 
 class _LoginScreen16State extends State<LoginScreen16> {
-  late final Timer _slideshowTimer; // ✅ Timer disimpan agar bisa dibatalkan
+  late final Timer _slideshowTimer;
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final AuthProvider _authProvider = AuthProvider();
+  final ApiProvider _apiProvider = ApiProvider();
 
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
   final List<String> _imagePaths = [
-    'assets/image/model-1.JPEG',
-    'assets/image/model-2.JPEG',
-    'assets/image/model-3.JPEG',
+    'assets/images/model-1.jpeg',
+    'assets/images/model-2.jpeg',
+    'assets/images/model-3.jpeg',
   ];
 
   @override
@@ -55,7 +56,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
 
   @override
   void dispose() {
-    _slideshowTimer.cancel(); // ✅ hentikan timer agar tidak leak
+    _slideshowTimer.cancel();
     _pageController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -64,27 +65,41 @@ class _LoginScreen16State extends State<LoginScreen16> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) {
-      _showSnackBar("Please fill in all fields correctly.", Colors.orange);
+      _showSnackBar("Please fill in all fields correctly.", AppColors.orange);
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // AuthProvider.loginUser sudah MENYIMPAN token via SharedPreferences
-      final AuthResponse response = await _authProvider.loginUser(
+      // Menggunakan ApiResponse<AuthData> karena login mengembalikan AuthData
+      final ApiResponse<AuthData> response = await _apiProvider.login(
         email: _emailController.text,
         password: _passwordController.text,
       );
 
-      // Pastikan token benar‑benar tersimpan sebelum navigate
-      final savedToken = await PreferenceHandler.getToken();
-      print('DEBUG – token setelah login: $savedToken');
+      // Cek jika login sukses dan ada data AuthData (yang berisi token dan user)
+      if (response.data != null &&
+          response.data!.token != null &&
+          response.data!.user != null) {
+        // Simpan token
+        await PreferenceHandler.setToken(response.data!.token!);
+        // Simpan data user lainnya (objek User)
+        await PreferenceHandler.setUserData(response.data!.user!);
 
-      _showSnackBar(response.message ?? "Login successful!", Colors.green);
+        final savedToken = await PreferenceHandler.getToken();
+        print('DEBUG – token setelah login: $savedToken');
 
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(context, HomeScreen16.id);
+        _showSnackBar(response.message ?? "Login successful!", AppColors.green);
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, HomeScreen16.id);
+      } else {
+        // Jika response.data, token, atau user null meskipun status 200, berarti ada masalah di data API
+        throw Exception(
+          response.message ?? "Login failed: Invalid response from server.",
+        );
+      }
     } on Exception catch (e) {
       print('Login Error: $e');
       String errorMessage = "An unexpected error occurred.";
@@ -92,10 +107,12 @@ class _LoginScreen16State extends State<LoginScreen16> {
         errorMessage = "Invalid email or password.";
       } else if (e.toString().contains("Validation failed.")) {
         errorMessage = "Validation failed. Please check your inputs.";
-      } else {
+      } else if (e.toString().contains("Exception: ")) {
         errorMessage = e.toString().replaceFirst('Exception: ', '');
+      } else {
+        errorMessage = e.toString();
       }
-      _showSnackBar(errorMessage, Colors.red);
+      _showSnackBar(errorMessage, AppColors.redAccent);
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -107,7 +124,10 @@ class _LoginScreen16State extends State<LoginScreen16> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          style: GoogleFonts.montserrat(color: Colors.white),
+        ),
         backgroundColor: color,
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
@@ -195,20 +215,15 @@ class _LoginScreen16State extends State<LoginScreen16> {
                       ),
                       const SizedBox(height: 24),
                       _isLoading
-                          ? const CircularProgressIndicator(
+                          ? CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Color.fromARGB(255, 180, 154, 129),
+                              AppColors.primaryGold,
                             ),
                           )
                           : ElevatedButton(
                             onPressed: _isLoading ? null : _login,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromARGB(
-                                255,
-                                180,
-                                154,
-                                129,
-                              ),
+                              backgroundColor: AppColors.primaryGold,
                               minimumSize: const Size(double.infinity, 50),
                               elevation: 6,
                               shadowColor: Colors.black45,
@@ -220,7 +235,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
                               'Login',
                               style: GoogleFonts.playfairDisplay(
                                 fontSize: 18,
-                                color: Colors.black,
+                                color: AppColors.textDark,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -232,16 +247,16 @@ class _LoginScreen16State extends State<LoginScreen16> {
                         child: Text.rich(
                           TextSpan(
                             text: "Don't have an account? ",
-                            style: TextStyle(
+                            style: GoogleFonts.montserrat(
                               color: Colors.white.withOpacity(0.85),
                               fontStyle: FontStyle.italic,
                               fontSize: 14,
                             ),
-                            children: const [
+                            children: [
                               TextSpan(
                                 text: 'Signup',
-                                style: TextStyle(
-                                  color: Color.fromARGB(255, 180, 154, 129),
+                                style: GoogleFonts.montserrat(
+                                  color: AppColors.primaryGold,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 14,
                                   fontStyle: FontStyle.italic,
@@ -275,7 +290,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
   }) {
     return TextFormField(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
+      style: GoogleFonts.montserrat(color: Colors.white),
       obscureText: isPassword,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
@@ -284,7 +299,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: Colors.white54),
+        hintStyle: GoogleFonts.montserrat(color: Colors.white54),
         filled: true,
         fillColor: Colors.white.withOpacity(0.1),
         border: OutlineInputBorder(
@@ -293,16 +308,20 @@ class _LoginScreen16State extends State<LoginScreen16> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color.fromARGB(255, 180, 154, 129),
-            width: 2,
-          ),
+          borderSide: BorderSide(color: AppColors.primaryGold, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 2),
+          borderSide: const BorderSide(color: AppColors.errorRed, width: 2),
         ),
-        errorStyle: const TextStyle(color: Colors.redAccent, fontSize: 12),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: AppColors.errorRed, width: 2),
+        ),
+        errorStyle: GoogleFonts.montserrat(
+          color: AppColors.redAccent,
+          fontSize: 12,
+        ),
         suffixIcon:
             isPasswordType
                 ? IconButton(

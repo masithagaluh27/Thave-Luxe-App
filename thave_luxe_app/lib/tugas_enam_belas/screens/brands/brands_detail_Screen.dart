@@ -1,16 +1,10 @@
-// Path: lib/tugas_enam_belas/screens/brand/brand_detail_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:lottie/lottie.dart';
-
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
-// REMOVED: import 'package:thave_luxe_app/tugas_enam_belas/models/brand_response.dart';
-// REMOVED: import 'package:thave_luxe_app/tugas_enam_belas/models/category_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart'; // Now imports ProductResponse
-
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // <<< ONLY THIS IMPORT FOR MODELS
 import 'package:thave_luxe_app/tugas_enam_belas/screens/product/product_detail_screen.dart';
 
 class BrandDetailScreen16 extends StatefulWidget {
@@ -33,8 +27,6 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
   final ApiProvider _apiProvider = ApiProvider();
 
   List<Product> _products = [];
-  // REMOVED: Map<int, Brand> _brandsMap = {};
-  // REMOVED: Map<int, Category> _categoriesMap = {};
 
   bool _isLoadingInitialData = true;
   String? _initialDataErrorMessage;
@@ -42,7 +34,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
   @override
   void initState() {
     super.initState();
-    _fetchProductsByBrand(); // We only need to fetch products now
+    _fetchProductsByBrand();
   }
 
   Future<void> _fetchProductsByBrand() async {
@@ -52,36 +44,49 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
     });
 
     try {
-      final ProductResponse response = await _apiProvider.getProducts();
+      final productResponse =
+          await _apiProvider
+              .getProducts(); // Returns ApiResponse<List<Product>>
+      print(
+        'BrandDetailScreen16: Raw API Response Message: ${productResponse.message}',
+      );
+      if (productResponse.data != null) {
+        print(
+          'BrandDetailScreen16: Raw API Response Data (first 500 chars): ${productResponse.data.toString().substring(0, productResponse.data!.length > 500 ? 500 : productResponse.data!.length)}',
+        );
+      } else {
+        print('BrandDetailScreen16: Raw API Response Data: null');
+      }
+
       if (mounted) {
-        List<Product> fetchedProducts = [];
-        if (response.data is List) {
-          fetchedProducts = List<Product>.from(
-            (response.data as List)
-                .map((x) {
-                  if (x is Map<String, dynamic>) return Product.fromJson(x);
-                  return null;
-                })
-                .where((p) => p != null)
-                .cast<Product>(),
-          );
-        } else if (response.data is Map<String, dynamic>) {
-          final product = Product.fromJson(
-            response.data as Map<String, dynamic>,
-          );
-          fetchedProducts = [product];
-        }
+        List<Product> allFetchedProducts = productResponse.data ?? [];
+
+        print(
+          'BrandDetailScreen16: Total products fetched from API: ${allFetchedProducts.length}',
+        );
+        print(
+          'BrandDetailScreen16: Filtering for brandId: ${widget.brandId} (${widget.brandName})',
+        );
 
         List<Product> filteredProducts =
-            fetchedProducts.where((p) => p.brandId == widget.brandId).toList();
+            allFetchedProducts.where((p) {
+              // Add more verbose logging for each product's brandId
+              print(
+                'BrandDetailScreen16: Checking product "${p.name}" (ID: ${p.id}) with brandId: ${p.brandId}, brandName: ${p.brandName}',
+              );
+              return p.brandId == widget.brandId;
+            }).toList();
+
+        print(
+          'BrandDetailScreen16: Total products after filtering: ${filteredProducts.length}',
+        );
 
         setState(() {
           _products = filteredProducts;
-          _isLoadingInitialData =
-              false; // Set loading to false after successful fetch
+          _isLoadingInitialData = false;
         });
         print(
-          'BrandDetailScreen16: Products fetched and filtered successfully for ${widget.brandName}: ${_products.length} items',
+          'BrandDetailScreen16: Displaying ${filteredProducts.length} products for brand: ${widget.brandName}',
         );
       }
     } catch (e) {
@@ -95,9 +100,6 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
       }
     }
   }
-
-  // REMOVED: _fetchCategories() and _fetchBrands() as they are no longer needed
-  // if Brand and Category objects are nested directly in Product.
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +155,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                 ),
                 const SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: _fetchProductsByBrand, // Retry only products
+                  onPressed: _fetchProductsByBrand,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryGold,
                     shape: RoundedRectangleBorder(
@@ -282,7 +284,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
         child: Padding(
           padding: const EdgeInsets.all(20.0),
           child: Text(
-            'No products found for this brand.',
+            'No products found for this brand, or brand ID is not available in API response.',
             style: GoogleFonts.montserrat(
               color: AppColors.subtleText,
               fontSize: 16,
@@ -310,10 +312,9 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
   }
 
   Widget _buildProductCard(Product product) {
-    String imageUrlToDisplay = product.imageUrl ?? '';
-    if (imageUrlToDisplay.isEmpty) {
-      imageUrlToDisplay =
-          'https://placehold.co/150x150/EEEEEE/333333?text=${product.name?.substring(0, 1) ?? 'P'}';
+    String imageUrlToDisplay = '';
+    if (product.imageUrls != null && product.imageUrls!.isNotEmpty) {
+      imageUrlToDisplay = product.imageUrls!.first;
     }
 
     final NumberFormat currencyFormatter = NumberFormat.currency(
@@ -322,23 +323,14 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
       decimalDigits: 0,
     );
 
-    // Use product.price directly, casting to double for calculations/display if needed
     final double productPrice = product.price?.toDouble() ?? 0.0;
-    // REMOVED: productDiscount - handled by the presence/absence of 'discount' in Product model
-    // If you add 'discount' back to Product, then re-enable this.
 
-    String displayCurrentPrice = currencyFormatter.format(
-      productPrice,
-    ); // Display price directly
+    String displayCurrentPrice = currencyFormatter.format(productPrice);
 
-    // REMOVED: displayDiscount and related discount logic
-    // If you re-add discount to Product model, re-enable this.
-
-    // Access brand name directly from the nested Brand object
-    final String brandName = product.brand?.name ?? 'Unknown Brand';
-
-    // Access category name directly from the nested Category object
-    final String categoryName = product.category?.name ?? 'Unknown Category';
+    // Use brandName and categoryName from Product model
+    final String brandNameToDisplay = product.brandName ?? 'Unknown Brand';
+    final String categoryNameToDisplay =
+        product.categoryName ?? 'Unknown Category';
 
     return GestureDetector(
       onTap: () {
@@ -349,8 +341,8 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
             builder:
                 (context) => ProductDetailScreen(
                   product: product,
-                  brandName: brandName,
-                  categoryName: categoryName,
+                  brandName: brandNameToDisplay,
+                  categoryName: categoryNameToDisplay,
                 ),
           ),
         );
@@ -387,37 +379,13 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                           color: AppColors.imagePlaceholderLight,
                           child: const Center(
                             child: Icon(
-                              Icons.broken_image,
+                              Icons.image_not_supported_outlined,
                               color: AppColors.accentGrey,
                             ),
                           ),
                         ),
                   ),
                 ),
-                // REMOVED: Discount badge logic (if product.discount is not in model)
-                // if (product.discount != null && product.discount! > 0)
-                //   Positioned(
-                //     top: 10,
-                //     left: 10,
-                //     child: Container(
-                //       padding: const EdgeInsets.symmetric(
-                //         horizontal: 8,
-                //         vertical: 4,
-                //       ),
-                //       decoration: BoxDecoration(
-                //         color: AppColors.primaryGold,
-                //         borderRadius: BorderRadius.circular(10),
-                //       ),
-                //       child: Text(
-                //         '${product.discount!.toStringAsFixed(0)}% OFF', // Assuming discount is percentage
-                //         style: GoogleFonts.montserrat(
-                //           color: AppColors.lightText,
-                //           fontSize: 12,
-                //           fontWeight: FontWeight.bold,
-                //         ),
-                //       ),
-                //     ),
-                //   ),
                 Positioned(
                   top: 10,
                   right: 10,
@@ -470,8 +438,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    // Now directly access brand name and category name from nested objects
-                    '$brandName · $categoryName',
+                    '$brandNameToDisplay · $categoryNameToDisplay',
                     style: GoogleFonts.montserrat(
                       fontSize: 13,
                       color: AppColors.subtleText,
@@ -491,19 +458,6 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                   const SizedBox(height: 5),
                   Row(
                     children: [
-                      // REMOVED: Discount price display logic (if product.discount is not in model)
-                      // if (product.discount != null && product.discount! > 0)
-                      //   Padding(
-                      //     padding: const EdgeInsets.only(right: 8.0),
-                      //     child: Text(
-                      //       currencyFormatter.format(productPrice), // Original price
-                      //       style: GoogleFonts.montserrat(
-                      //         fontSize: 14,
-                      //         color: AppColors.subtleText,
-                      //         decoration: TextDecoration.lineThrough,
-                      //       ),
-                      //     ),
-                      //   ),
                       Text(
                         displayCurrentPrice,
                         style: GoogleFonts.montserrat(

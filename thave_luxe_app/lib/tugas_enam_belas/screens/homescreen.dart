@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/produk_response.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // <<< ONLY THIS IMPORT FOR MODELS
+import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/profile_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/brands/brand_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/cart_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/category/category_screen.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/profile_screen.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/product/product_detail_screen.dart';
 
 class HomeScreen16 extends StatefulWidget {
   const HomeScreen16({super.key});
@@ -17,9 +18,10 @@ class HomeScreen16 extends StatefulWidget {
 }
 
 class _HomeScreen16State extends State<HomeScreen16> {
-  final ApiProvider _productProvider = ApiProvider();
+  final ApiProvider _apiProvider = ApiProvider();
   List<Product> _allProducts = [];
   List<Product> _products = [];
+  List<Brand> _allBrands = [];
   bool _isLoading = true;
   String? _errorMessage;
   final TextEditingController _searchController = TextEditingController();
@@ -52,25 +54,10 @@ class _HomeScreen16State extends State<HomeScreen16> {
     },
   ];
 
-  final List<String> _brands = [
-    'Ekin',
-    'Adidos',
-    'Pamu',
-    'Guccai',
-    'Prada',
-    'Louis Vuitton',
-    'Chanel',
-    'Fila',
-    'Vercace',
-    'Burbrebry',
-    'calvin clein',
-    'Ralph Lauren',
-  ];
-
   @override
   void initState() {
     super.initState();
-    _fetchProducts();
+    _fetchData();
   }
 
   @override
@@ -80,24 +67,37 @@ class _HomeScreen16State extends State<HomeScreen16> {
     super.dispose();
   }
 
-  Future<void> _fetchProducts() async {
+  Future<void> _fetchData() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
     try {
-      final ProductResponse response = await _productProvider.getProducts();
-      if (response.data is List) {
+      // Fetch Products
+      final productResponse = await _apiProvider.getProducts();
+      if (productResponse.data != null) {
         setState(() {
-          _allProducts = List<Product>.from(response.data!);
-
+          _allProducts = productResponse.data!;
           _products = _allProducts;
         });
       } else {
         setState(() {
-          _errorMessage =
-              "Invalid product data format received. Expected a list.";
+          _allProducts = [];
+          _products = [];
+          _errorMessage = "No product data received or invalid format.";
+        });
+      }
+
+      // Fetch Brands
+      final brandResponse = await _apiProvider.getBrands();
+      if (brandResponse.data != null) {
+        setState(() {
+          _allBrands = brandResponse.data!;
+        });
+      } else {
+        setState(() {
+          _allBrands = [];
         });
       }
     } on Exception catch (e) {
@@ -208,7 +208,7 @@ class _HomeScreen16State extends State<HomeScreen16> {
           ),
         ),
         child: RefreshIndicator(
-          onRefresh: _fetchProducts,
+          onRefresh: _fetchData,
           color: AppColors.primaryGold,
           child:
               _isLoading
@@ -236,7 +236,7 @@ class _HomeScreen16State extends State<HomeScreen16> {
                           ),
                           const SizedBox(height: 20),
                           ElevatedButton(
-                            onPressed: _fetchProducts,
+                            onPressed: _fetchData,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primaryGold,
                               foregroundColor: AppColors.textDark,
@@ -313,39 +313,55 @@ class _HomeScreen16State extends State<HomeScreen16> {
                         ),
                         SizedBox(
                           height: 50,
-                          child: ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16.0,
-                            ),
-                            itemCount: _brands.length,
-                            itemBuilder: (context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 12.0),
-                                child: Chip(
-                                  label: Text(
-                                    _brands[index],
-                                    style: GoogleFonts.montserrat(
-                                      color: AppColors.textDark,
-                                      fontWeight: FontWeight.w600,
+                          child:
+                              _allBrands.isEmpty && !_isLoading
+                                  ? Center(
+                                    child: Text(
+                                      'No brands available.',
+                                      style: GoogleFonts.montserrat(
+                                        color: AppColors.subtleText,
+                                      ),
                                     ),
-                                  ),
-                                  backgroundColor: AppColors.backgroundLight,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(25),
-                                    side: const BorderSide(
-                                      color: AppColors.subtleGrey,
-                                      width: 0.5,
+                                  )
+                                  : ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16.0,
                                     ),
+                                    itemCount: _allBrands.length,
+                                    itemBuilder: (context, index) {
+                                      final brand = _allBrands[index];
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 12.0,
+                                        ),
+                                        child: Chip(
+                                          label: Text(
+                                            brand.name ?? 'Unknown Brand',
+                                            style: GoogleFonts.montserrat(
+                                              color: AppColors.textDark,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          backgroundColor:
+                                              AppColors.backgroundLight,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              25,
+                                            ),
+                                            side: const BorderSide(
+                                              color: AppColors.subtleGrey,
+                                              width: 0.5,
+                                            ),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 15,
+                                            vertical: 8,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 15,
-                                    vertical: 8,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
                         ),
                         const SizedBox(height: 15),
                         SizedBox(
@@ -451,7 +467,7 @@ class _HomeScreen16State extends State<HomeScreen16> {
                         SizedBox(
                           height: 280,
                           child:
-                              _products.isEmpty
+                              _products.isEmpty && !_isLoading
                                   ? Center(
                                     child: Text(
                                       'No products to show in this section.',
@@ -525,6 +541,11 @@ class _HomeScreen16State extends State<HomeScreen16> {
   }
 
   Widget _buildProductCard(Product product) {
+    String imageUrlToDisplay = '';
+    if (product.imageUrls != null && product.imageUrls!.isNotEmpty) {
+      imageUrlToDisplay = product.imageUrls!.first;
+    }
+
     return SizedBox(
       width: 160,
       child: Card(
@@ -533,7 +554,12 @@ class _HomeScreen16State extends State<HomeScreen16> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: InkWell(
           onTap: () {
-            _showSnackBar('Tapped on ${product.name}', Colors.blueGrey);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProductDetailScreen(product: product),
+              ),
+            );
           },
           borderRadius: BorderRadius.circular(12),
           child: Padding(
@@ -549,11 +575,31 @@ class _HomeScreen16State extends State<HomeScreen16> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.shopping_bag_outlined,
-                      color: AppColors.subtleText,
-                      size: 40,
-                    ),
+                    child:
+                        imageUrlToDisplay.isNotEmpty
+                            ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                imageUrlToDisplay,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                errorBuilder:
+                                    (context, error, stackTrace) =>
+                                        const Center(
+                                          child: Icon(
+                                            Icons.image_not_supported_outlined,
+                                            color: AppColors.subtleText,
+                                            size: 40,
+                                          ),
+                                        ),
+                              ),
+                            )
+                            : const Icon(
+                              Icons.shopping_bag_outlined,
+                              color: AppColors.subtleText,
+                              size: 40,
+                            ),
                   ),
                 ),
                 const SizedBox(height: 8),

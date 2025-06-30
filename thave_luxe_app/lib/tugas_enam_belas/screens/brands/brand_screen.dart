@@ -1,12 +1,10 @@
-// Path: lib/tugas_enam_belas/screens/brand/brand_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/brand_response.dart'; // Make sure this path is correct
-import 'package:thave_luxe_app/tugas_enam_belas/screens/brands/brands_detail_Screen.dart'; // This path should now be correct
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // <<< ONLY THIS IMPORT FOR MODELS
+import 'package:thave_luxe_app/tugas_enam_belas/screens/brands/brands_detail_Screen.dart';
 
 class BrandScreen16 extends StatefulWidget {
   const BrandScreen16({super.key});
@@ -39,18 +37,15 @@ class _BrandScreen16State extends State<BrandScreen16> {
       final brandResponse = await _apiProvider.getBrands();
       if (mounted) {
         setState(() {
-          if (brandResponse.data is List) {
-            _brands = List<Brand>.from(
-              (brandResponse.data as List).map(
-                (x) => Brand.fromJson(x as Map<String, dynamic>),
-              ),
-            );
-          } else {
-            _brands = []; // No data or invalid data format
-            _errorMessage = 'Invalid data format for brands.';
-            print('BrandScreen16: getBrands did not return a List.');
-          }
+          _brands = brandResponse.data ?? [];
           _isLoading = false;
+          if (_brands.isEmpty &&
+              brandResponse.message != null &&
+              brandResponse.message!.isNotEmpty) {
+            _errorMessage = brandResponse.message;
+          } else if (_brands.isEmpty) {
+            _errorMessage = 'No brands found or data is empty.';
+          }
         });
       }
     } catch (e) {
@@ -93,10 +88,8 @@ class _BrandScreen16State extends State<BrandScreen16> {
       ),
       centerTitle: true,
       actions: <Widget>[
-        // FIX: Added const keyword as the icon doesn't change
         IconButton(
           icon: const Icon(
-            // Line 294 in your original code
             Icons.notifications_none_outlined,
             color: AppColors.subtleText,
             size: 28,
@@ -203,18 +196,30 @@ class _BrandScreen16State extends State<BrandScreen16> {
         return BrandCard(
           brand: brand,
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder:
-                    (context) => BrandDetailScreen16(
-                      brandId:
-                          brand.id!, // Assuming brand.id is never null here
-                      brandName:
-                          brand.name!, // Assuming brand.name is never null here
-                    ),
-              ),
-            );
+            // Ensure ID and name are not null before navigating
+            if (brand.id != null && brand.name != null) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => BrandDetailScreen16(
+                        brandId: brand.id!,
+                        brandName: brand.name!,
+                      ),
+                ),
+              );
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Invalid brand details for navigation.',
+                    style: GoogleFonts.montserrat(color: Colors.white),
+                  ),
+                  backgroundColor: AppColors.redAccent,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
           },
         );
       },
@@ -230,12 +235,6 @@ class BrandCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String imageUrlToDisplay = brand.imageUrl ?? '';
-    if (imageUrlToDisplay.isEmpty) {
-      imageUrlToDisplay =
-          'https://placehold.co/100x100/EEEEEE/333333?text=${brand.name?.substring(0, 1) ?? 'B'}';
-    }
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -254,27 +253,6 @@ class BrandCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                imageUrlToDisplay,
-                width: 70,
-                height: 70,
-                fit: BoxFit.cover,
-                errorBuilder:
-                    (context, error, stackTrace) => Container(
-                      width: 70,
-                      height: 70,
-                      color: AppColors.imagePlaceholderLight,
-                      child: const Icon(
-                        Icons.broken_image,
-                        color: AppColors.accentGrey,
-                        size: 30,
-                      ),
-                    ),
-              ),
-            ),
-            const SizedBox(width: 15),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,15 +268,6 @@ class BrandCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 5),
-                  Text(
-                    brand.description ?? 'No description available.',
-                    style: GoogleFonts.montserrat(
-                      fontSize: 14,
-                      color: AppColors.subtleText,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
                 ],
               ),
             ),

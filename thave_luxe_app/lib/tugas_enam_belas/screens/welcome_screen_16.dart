@@ -18,9 +18,9 @@ class _WelcomeScreen16State extends State<WelcomeScreen16> {
   int _currentPage = 0;
 
   final List<String> _imagePaths = [
-    'assets/image/model-1.JPEG',
-    'assets/image/model-2.JPEG',
-    'assets/image/model-3.JPEG',
+    'assets/images/model-1.jpeg',
+    'assets/images/model-2.jpeg',
+    'assets/images/model-3.jpeg',
   ];
 
   @override

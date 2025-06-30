@@ -49,7 +49,7 @@ class _SplashScreen16State extends State<SplashScreen16> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/image/blur.JPEG', fit: BoxFit.cover),
+          Image.asset('assets/images/blur.jpeg', fit: BoxFit.cover),
           Container(
             color: Colors.black.withOpacity(0.3), // Optional dark overlay
           ),

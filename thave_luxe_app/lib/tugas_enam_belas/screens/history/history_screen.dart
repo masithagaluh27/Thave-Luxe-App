@@ -1,32 +1,26 @@
-// Make sure this path is correct for your project structure
-// Assuming app_color.dart is in constant/app_color.dart as seen in ProfileScreen16
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/helper/preference_handler.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/store_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/history_response.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/history/history_detail_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:google_fonts/google_fonts.dart'; // Import Google Fonts
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Menggunakan model tunggal app_models.dart
+import 'package:thave_luxe_app/tugas_enam_belas/screens/history/history_detail_screen.dart'; // Pastikan ini mengarah ke file HistoryDetailScreen Anda
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key});
 
-  static const String id = '/history16'; // Define a route ID for consistency
+  static const String id = '/history16';
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  // Use AppColors from your constant file
-  // static const Color primaryPink = Color(0xFFE91E63); // REMOVED
-  static const String _baseUrl = 'https://apptoko.mobileprojp.com/public/';
-
   final ApiProvider _apiService = ApiProvider();
-  final user = PreferenceHandler.getUserData();
 
-  late Future<HistoryResponse> _historyFuture;
+  // Menggunakan model History dari app_models.dart
+  late Future<List<History>> _historyFuture;
 
   final NumberFormat _currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
@@ -40,38 +34,41 @@ class _HistoryScreenState extends State<HistoryScreen> {
     _historyFuture = _fetchHistory();
   }
 
-  Future<HistoryResponse> _fetchHistory() async {
+  Future<List<History>> _fetchHistory() async {
     try {
       final user = await PreferenceHandler.getUserData();
       if (user == null || user.id == null) {
         throw Exception('Please log in to view your transaction history.');
       }
-      return await _apiService.getTransactionHistory();
+      final apiResponse = await _apiService.getPurchaseHistory();
+      if (apiResponse.data != null) {
+        return apiResponse.data!;
+      } else {
+        throw Exception(apiResponse.message ?? 'No history data found.');
+      }
     } catch (e) {
-      print('Error fetching history: $e');
-      return Future.error(e);
+      debugPrint('Error fetching history: $e');
+      rethrow;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          AppColors.backgroundLight, // Use your app's background color
+      backgroundColor: AppColors.backgroundLight,
       appBar: _buildAppBar(context),
-      body: FutureBuilder<HistoryResponse>(
+      body: FutureBuilder<List<History>>(
+        // FutureBuilder untuk List<History>
         future: _historyFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryGold,
-              ), // Use your primary color
+              child: CircularProgressIndicator(color: AppColors.primaryGold),
             );
           } else if (snapshot.hasError) {
             return Center(
               child: Padding(
-                padding: const EdgeInsets.all(20.0), // Consistent padding
+                padding: const EdgeInsets.all(20.0),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -79,7 +76,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       'Error: ${snapshot.error.toString().replaceFirst('Exception: ', '')}',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.montserrat(
-                        color: AppColors.redAccent, // Consistent error color
+                        color: AppColors.redAccent,
                         fontSize: 16,
                       ),
                     ),
@@ -91,14 +88,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         });
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            AppColors.primaryGold, // Consistent button style
-                        foregroundColor:
-                            AppColors.darkBackground, // Text color for button
+                        backgroundColor: AppColors.primaryGold,
+                        foregroundColor: AppColors.darkBackground,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            12,
-                          ), // Consistent border radius
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 30,
@@ -107,9 +100,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       ),
                       child: Text(
                         'Retry',
-                        style: GoogleFonts.playfairDisplay(
-                          fontSize: 16,
-                        ), // Consistent font
+                        style: GoogleFonts.playfairDisplay(fontSize: 16),
                       ),
                     ),
                   ],
@@ -117,7 +108,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
             );
           } else if (snapshot.hasData) {
-            final List<HistoryItem> history = snapshot.data!.data ?? [];
+            final List<History> history = snapshot.data ?? [];
             if (history.isEmpty) {
               return Center(
                 child: Column(
@@ -126,14 +117,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Icon(
                       Icons.shopping_bag_outlined,
                       size: 80,
-                      color: AppColors.subtleGrey, // Consistent grey color
+                      color: AppColors.subtleGrey,
                     ),
                     const SizedBox(height: 20),
                     Text(
                       'No order history found.',
                       style: GoogleFonts.montserrat(
                         fontSize: 20,
-                        color: AppColors.subtleText, // Consistent text color
+                        color: AppColors.subtleText,
                       ),
                     ),
                   ],
@@ -145,7 +136,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               padding: const EdgeInsets.symmetric(
                 horizontal: 20.0,
                 vertical: 15.0,
-              ), // Consistent padding
+              ),
               itemCount: history.length,
               itemBuilder: (context, index) {
                 final item = history[index];
@@ -156,9 +147,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             return Center(
               child: Text(
                 'No history data available.',
-                style: GoogleFonts.montserrat(
-                  color: AppColors.textDark, // Consistent text color
-                ),
+                style: GoogleFonts.montserrat(color: AppColors.textDark),
               ),
             );
           }
@@ -169,34 +158,34 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.transparent, // Transparent background
-      elevation: 0, // No shadow
+      backgroundColor: Colors.transparent,
+      elevation: 0,
       title: Text(
         'Order History',
         style: GoogleFonts.playfairDisplay(
-          // Use Playfair Display for title
-          color: AppColors.textDark, // Consistent text color
-          fontSize: 24, // Consistent font size
+          color: AppColors.textDark,
+          fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
       ),
       centerTitle: true,
       leading: IconButton(
-        // Consistent back button
         icon: const Icon(Icons.arrow_back_ios, color: AppColors.textDark),
         onPressed: () {
           Navigator.pop(context);
         },
       ),
-      // Removed notification icon to match ProfileScreen16's actions (which were empty)
-      actions: <Widget>[],
+      actions: const [],
     );
   }
 
-  Widget _buildHistoryCard(HistoryItem historyItem) {
+  // Menggunakan model History dari app_models.dart
+  Widget _buildHistoryCard(History historyItem) {
     final String formattedDate =
         historyItem.createdAt != null
-            ? DateFormat('MMMM dd, yyyy').format(historyItem.createdAt!)
+            ? DateFormat(
+              'MMMM dd, yyyy',
+            ).format(DateTime.parse(historyItem.createdAt!))
             : 'N/A';
 
     final String totalAmount = _currencyFormatter.format(
@@ -208,18 +197,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => HistoryDetailScreen(historyItem: historyItem),
+            builder:
+                (context) => HistoryDetailScreen(
+                  historyItem: historyItem,
+                ), // Mengirim objek History
           ),
         );
       },
       child: Container(
-        // Changed from Card to Container to better control styling with Box Shadow
         margin: const EdgeInsets.only(bottom: 15),
         decoration: BoxDecoration(
-          color: AppColors.cardBackgroundLight, // Consistent card background
-          borderRadius: BorderRadius.circular(15.0), // Consistent border radius
+          color: AppColors.cardBackgroundLight,
+          borderRadius: BorderRadius.circular(15.0),
           boxShadow: [
-            // Consistent shadow from ProfileScreen16
             BoxShadow(
               color: Colors.black.withOpacity(0.3),
               spreadRadius: 2,
@@ -239,89 +229,96 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Text(
                     'Order ID: ${historyItem.id ?? 'N/A'}',
                     style: GoogleFonts.montserrat(
-                      // Consistent font
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textDark, // Consistent text color
+                      color: AppColors.textDark,
                     ),
                   ),
                   Text(
                     formattedDate,
                     style: GoogleFonts.montserrat(
-                      // Consistent font
                       fontSize: 14,
-                      color: AppColors.subtleText, // Consistent grey color
+                      color: AppColors.subtleText,
                     ),
                   ),
                 ],
               ),
               Padding(
-                // Using Padding and Divider widget for consistency
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
                 child: Divider(
-                  color: AppColors.subtleGrey.withOpacity(
-                    0.4,
-                  ), // Consistent divider
+                  color: AppColors.subtleGrey.withOpacity(0.4),
                   thickness: 1,
                 ),
               ),
               if (historyItem.items != null && historyItem.items!.isNotEmpty)
                 ...historyItem.items!.map((item) {
+                  // Menggunakan HistoryProduct dari HistoryItem
                   final productName = item.product?.name ?? 'Unknown Product';
                   final quantity = item.quantity ?? 0;
-                  final price = item.product?.price ?? 0;
+                  final price =
+                      item.product?.price ?? 0; // Price from HistoryProduct
+
                   double itemPrice = price.toDouble();
+                  // Apply discount if available from HistoryProduct
                   if (item.product?.discount != null &&
-                      item.product!.discount! > 0) {
+                      (item.product!.discount as num) > 0) {
                     itemPrice =
-                        itemPrice * (1 - (item.product!.discount! / 100));
+                        itemPrice *
+                        (1 -
+                            ((item.product!.discount as num).toDouble() / 100));
                   }
                   final itemSubtotal = _currencyFormatter.format(
                     itemPrice * quantity,
                   );
 
-                  String imageUrlToDisplay =
-                      item.product?.imageUrl != null &&
-                              item.product!.imageUrl!.isNotEmpty
-                          ? (item.product!.imageUrl!.startsWith('http')
-                              ? item.product!.imageUrl!
-                              : '$_baseUrl${item.product!.imageUrl!}')
-                          : 'https://placehold.co/50x50/FFC0CB/000000?text=P'; // Placeholder needs to be updated manually
+                  // String imageUrlToDisplay = '';
+                  // // Check if imageUrls is not null and not empty from HistoryProduct
+                  // if (item.product?.imageUrls != null &&
+                  //     item.product!.imageUrls!.isNotEmpty) {
+                  //   final firstImageUrl = item.product!.imageUrls!.first;
+                  //   // Prepend base URL only if it's not already a full URL
+                  //   imageUrlToDisplay =
+                  //       firstImageUrl.startsWith('http')
+                  //           ? firstImageUrl
+                  //           : '${ApiProvider._baseUrl}/images/$firstImageUrl'; // Sesuaikan '/images/' jika perlu
+                  // } else {
+                  //   imageUrlToDisplay =
+                  //       'https://placehold.co/50x50/FFC0CB/000000?text=P'; // Default placeholder
+                  // }
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5.0),
                     child: Row(
                       children: [
                         // Item Image
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            // Using a placeholder background color that fits theme
-                            color: AppColors.subtleGrey.withOpacity(0.3),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Image.network(
-                              imageUrlToDisplay,
-                              fit: BoxFit.cover,
-                              errorBuilder:
-                                  (context, error, stackTrace) => Container(
-                                    color: AppColors.subtleGrey.withOpacity(
-                                      0.2,
-                                    ), // Consistent grey
-                                    child: Center(
-                                      child: Icon(
-                                        Icons.broken_image,
-                                        size: 20,
-                                        color: AppColors.subtleText,
-                                      ), // Consistent text color
-                                    ),
-                                  ),
-                            ),
-                          ),
-                        ),
+                        // Container(
+                        //   width: 50,
+                        //   height: 50,
+                        //   decoration: BoxDecoration(
+                        //     borderRadius: BorderRadius.circular(10),
+                        //     color: AppColors.subtleGrey.withOpacity(0.3),
+                        //   ),
+                        //   child: ClipRRect(
+                        //     borderRadius: BorderRadius.circular(10),
+                        //     child: Image.network(
+                        //       imageUrlToDisplay,
+                        //       fit: BoxFit.cover,
+                        //       errorBuilder:
+                        //           (context, error, stackTrace) => Container(
+                        //             color: AppColors.subtleGrey.withOpacity(
+                        //               0.2,
+                        //             ),
+                        //             child: Center(
+                        //               child: Icon(
+                        //                 Icons.broken_image,
+                        //                 size: 20,
+                        //                 color: AppColors.subtleText,
+                        //               ),
+                        //             ),
+                        //           ),
+                        //     ),
+                        //   ),
+                        // ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -330,12 +327,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               Text(
                                 productName,
                                 style: GoogleFonts.montserrat(
-                                  // Consistent font
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
-                                  color:
-                                      AppColors
-                                          .textDark, // Consistent text color
+                                  color: AppColors.textDark,
                                 ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
@@ -343,11 +337,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                               Text(
                                 'Qty: $quantity',
                                 style: GoogleFonts.montserrat(
-                                  // Consistent font
                                   fontSize: 13,
-                                  color:
-                                      AppColors
-                                          .subtleText, // Consistent grey color
+                                  color: AppColors.subtleText,
                                 ),
                               ),
                             ],
@@ -356,35 +347,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         Text(
                           itemSubtotal,
                           style: GoogleFonts.montserrat(
-                            // Consistent font
                             fontSize: 15,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.textDark, // Consistent text color
+                            color: AppColors.textDark,
                           ),
                         ),
                       ],
                     ),
                   );
-                }).toList()
+                })
               else
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0),
                   child: Text(
                     'No items found for this order.',
                     style: GoogleFonts.montserrat(
-                      // Consistent font
                       fontStyle: FontStyle.italic,
-                      color: AppColors.subtleText, // Consistent grey color
+                      color: AppColors.subtleText,
                     ),
                   ),
                 ),
               Padding(
-                // Using Padding and Divider widget for consistency
                 padding: const EdgeInsets.symmetric(vertical: 10.0),
                 child: Divider(
-                  color: AppColors.subtleGrey.withOpacity(
-                    0.4,
-                  ), // Consistent divider
+                  color: AppColors.subtleGrey.withOpacity(0.4),
                   thickness: 1,
                 ),
               ),
@@ -394,19 +380,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   Text(
                     'Total Amount:',
                     style: GoogleFonts.montserrat(
-                      // Consistent font
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.textDark, // Consistent text color
+                      color: AppColors.textDark,
                     ),
                   ),
                   Text(
                     totalAmount,
                     style: GoogleFonts.playfairDisplay(
-                      // Use Playfair for total amount
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: AppColors.primaryGold, // Your primary gold color
+                      color: AppColors.primaryGold,
                     ),
                   ),
                 ],
