@@ -1,14 +1,23 @@
+import 'dart:io'; // Required for File
+import 'dart:convert'; // Required for base64Encode
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // For debugPrint
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart'; // Import image_picker
+import 'package:mime/mime.dart'; // Import mime package to get file type
+
 import 'package:thave_luxe_app/constant/app_color.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart'; // Ensure this is your main ApiProvider
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Assuming Product model is here
 
 class ManageProductsScreen16 extends StatefulWidget {
-  final String? userEmail;
+  final String? userEmail; // NEW: Added userEmail to constructor
 
-  const ManageProductsScreen16({super.key, this.userEmail});
+  const ManageProductsScreen16({
+    super.key,
+    this.userEmail,
+  }); // NEW: Constructor updated
   static const String id = '/manageProducts16';
 
   @override
@@ -20,7 +29,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
   List<Product> _products = [];
   bool _isLoading = true;
   String? _errorMessage;
-  bool _isAdmin = false;
+  bool _isAdmin = false; // NEW: Added isAdmin flag
 
   final NumberFormat _currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
@@ -28,9 +37,13 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
     decimalDigits: 0,
   );
 
+  // New state variable for selected images
+  List<File> _selectedFiles = [];
+
   @override
   void initState() {
     super.initState();
+    // NEW: Initialize _isAdmin based on passed userEmail
     _isAdmin = widget.userEmail == 'admin@gmail.com';
     if (_isAdmin) {
       _fetchProducts();
@@ -82,8 +95,56 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
     }
   }
 
+  // Function to pick multiple images
+  Future<void> _pickImages() async {
+    final ImagePicker picker = ImagePicker();
+    final List<XFile>? pickedFiles = await picker.pickMultiImage();
+
+    if (pickedFiles != null && pickedFiles.isNotEmpty) {
+      setState(() {
+        _selectedFiles = pickedFiles.map((xfile) => File(xfile.path)).toList();
+      });
+    }
+  }
+
+  // Function to convert a File to Base64 string with proper prefix
+  Future<String?> _fileToBase64(File file) async {
+    try {
+      Uint8List imageBytes = await file.readAsBytes();
+      String? mimeType = lookupMimeType(file.path);
+      String prefix = '';
+
+      if (mimeType != null) {
+        prefix = 'data:$mimeType;base64,';
+      } else {
+        if (file.path.endsWith('.png')) {
+          prefix = 'data:image/png;base64,';
+        } else if (file.path.endsWith('.jpg') || file.path.endsWith('.jpeg')) {
+          prefix = 'data:image/jpeg;base64,';
+        } else if (file.path.endsWith('.webp')) {
+          prefix = 'data:image/webp;base64,';
+        } else {
+          prefix = 'data:application/octet-stream;base64,';
+        }
+      }
+      return prefix + base64Encode(imageBytes);
+    } catch (e) {
+      debugPrint('Error converting file to base64: $e');
+      return null;
+    }
+  }
+
   // Function to show Add/Edit Product dialog
   Future<void> _showProductFormDialog({Product? productToEdit}) async {
+    // Only allow dialog if admin
+    if (!_isAdmin) {
+      _showSnackBar(
+        'Permission Denied: You are not authorized to perform this action.',
+        AppColors.redAccent,
+      );
+      return;
+    }
+
     final TextEditingController nameController = TextEditingController(
       text: productToEdit?.name ?? '',
     );
@@ -93,13 +154,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
     final TextEditingController descriptionController = TextEditingController(
       text: productToEdit?.description ?? '',
     );
-    final TextEditingController imageUrlController = TextEditingController(
-      text:
-          productToEdit?.imageUrls != null &&
-                  productToEdit!.imageUrls!.isNotEmpty
-              ? productToEdit.imageUrls!.first
-              : '',
-    );
+    // Removed imageUrlController as we are using multiple image picker
     final TextEditingController stockController = TextEditingController(
       text: productToEdit?.stock?.toString() ?? '',
     );
@@ -112,196 +167,340 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
 
     final bool isEditing = productToEdit != null;
 
+    setState(() {
+      _selectedFiles = []; // Reset selected files for the dialog
+    });
+
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          backgroundColor: AppColors.darkBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            isEditing ? 'Edit Product' : 'Add New Product',
-            style: GoogleFonts.playfairDisplay(
-              color: AppColors.primaryGold,
-              fontWeight: FontWeight.bold,
-              fontSize: 22,
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                _buildTextField(
-                  nameController,
-                  'Product Name',
-                  Icons.drive_file_rename_outline,
-                ),
-                const SizedBox(height: 15),
-                _buildTextField(
-                  priceController,
-                  'Price',
-                  Icons.attach_money,
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 15),
-                _buildTextField(
-                  stockController,
-                  'Stock Quantity',
-                  Icons.inventory,
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 15),
-                _buildTextField(
-                  brandIdController,
-                  'Brand ID',
-                  Icons.branding_watermark,
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 15),
-                _buildTextField(
-                  descriptionController,
-                  'Description',
-                  Icons.description,
-                ),
-                const SizedBox(height: 15),
-                _buildTextField(imageUrlController, 'Image URL', Icons.image),
-                const SizedBox(height: 15),
-                _buildTextField(
-                  discountController,
-                  'Discount (optional)',
-                  Icons.discount,
-                  keyboardType: TextInputType.number,
-                ),
-              ],
-            ),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.montserrat(color: AppColors.subtleGrey),
+        return StatefulBuilder(
+          // Use StatefulBuilder to update dialog UI
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: AppColors.darkBackground,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                if (nameController.text.isEmpty ||
-                    priceController.text.isEmpty ||
-                    stockController.text.isEmpty ||
-                    brandIdController.text.isEmpty) {
-                  _showSnackBar(
-                    'Name, Price, Stock, and Brand ID cannot be empty.',
-                    AppColors.redAccent,
-                  );
-                  return;
-                }
-                if (int.tryParse(priceController.text) == null ||
-                    int.tryParse(stockController.text) == null ||
-                    int.tryParse(brandIdController.text) == null) {
-                  _showSnackBar(
-                    'Price, Stock, and Brand ID must be valid numbers.',
-                    AppColors.redAccent,
-                  );
-                  return;
-                }
-
-                double? discountValue;
-                if (discountController.text.isNotEmpty) {
-                  discountValue = double.tryParse(discountController.text);
-                  if (discountValue == null) {
-                    _showSnackBar(
-                      'Discount must be a valid number.',
-                      AppColors.redAccent,
-                    );
-                    return;
-                  }
-                }
-
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder:
-                      (context) => Center(
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppColors.primaryGold,
-                          ),
+              title: Text(
+                isEditing ? 'Edit Product' : 'Add New Product',
+                style: GoogleFonts.playfairDisplay(
+                  color: AppColors.primaryGold,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: ListBody(
+                  children: <Widget>[
+                    _buildTextField(
+                      nameController,
+                      'Product Name',
+                      Icons.drive_file_rename_outline,
+                    ),
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      priceController,
+                      'Price',
+                      Icons.attach_money,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      stockController,
+                      'Stock Quantity',
+                      Icons.inventory,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      brandIdController,
+                      'Brand ID',
+                      Icons.branding_watermark,
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      descriptionController,
+                      'Description',
+                      Icons.description,
+                    ),
+                    const SizedBox(height: 15),
+                    // Image Picker Section
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await _pickImages();
+                        setDialogState(
+                          () {},
+                        ); // Update dialog state to show thumbnails
+                      },
+                      icon: const Icon(
+                        Icons.add_photo_alternate,
+                        color: AppColors.darkBackground,
+                      ),
+                      label: Text(
+                        _selectedFiles.isEmpty
+                            ? (isEditing ? 'Change Images' : 'Select Images')
+                            : '${_selectedFiles.length} Image(s) Selected',
+                        style: GoogleFonts.montserrat(
+                          color: AppColors.darkBackground,
                         ),
                       ),
-                );
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryGold,
+                        foregroundColor: AppColors.darkBackground,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
 
-                try {
-                  List<String>? imageUrlsToSend;
-                  if (imageUrlController.text.isNotEmpty) {
-                    imageUrlsToSend = [imageUrlController.text];
-                  }
-
-                  if (isEditing) {
-                    await _apiProvider.updateProduct(
-                      productId: productToEdit.id!,
-                      name: nameController.text,
-                      price: int.parse(priceController.text),
-                      stock: int.parse(stockController.text),
-                      brandId: int.parse(brandIdController.text),
-                      // Fixed: Always send a non-nullable string for description
-                      // If your API's update endpoint truly accepts 'null' for
-                      // description, you'll need to change the APIProvider's
-                      // updateProduct signature for 'description' to 'String?'
-                      // If it expects String, sending empty string is the safe fallback.
-                      description: descriptionController.text,
-                      images: imageUrlsToSend,
-                      discount: discountValue,
-                    );
-                    _showSnackBar(
-                      'Product updated successfully!',
-                      AppColors.green,
-                    );
-                  } else {
-                    await _apiProvider.addProduct(
-                      name: nameController.text,
-                      price: int.parse(priceController.text),
-                      stock: int.parse(stockController.text),
-                      brandId: int.parse(brandIdController.text),
-                      description: descriptionController.text,
-                      images: imageUrlsToSend,
-                      discount: discountValue,
-                    );
-                    _showSnackBar(
-                      'Product added successfully!',
-                      AppColors.green,
-                    );
-                  }
-                  if (mounted) Navigator.of(context).pop();
-                  if (mounted) Navigator.of(dialogContext).pop();
-                  _fetchProducts();
-                } on Exception catch (e) {
-                  if (mounted) Navigator.of(context).pop();
-                  _showSnackBar(
-                    'Operation failed: ${e.toString().replaceFirst('Exception: ', '')}',
-                    AppColors.redAccent,
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGold,
-                foregroundColor: AppColors.darkBackground,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
+                    if (_selectedFiles.isNotEmpty) ...[
+                      Container(
+                        height: 100,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _selectedFiles.length,
+                          itemBuilder: (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.file(
+                                      _selectedFiles[index],
+                                      width: 90,
+                                      height: 90,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: -5,
+                                    right: -5,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        Icons.cancel,
+                                        color: AppColors.redAccent,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        setDialogState(() {
+                                          _selectedFiles.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ] else if (isEditing &&
+                        productToEdit!.imageUrls != null &&
+                        productToEdit.imageUrls!.isNotEmpty) ...[
+                      Container(
+                        height: 100,
+                        margin: const EdgeInsets.only(bottom: 10),
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: productToEdit.imageUrls!.length,
+                          itemBuilder: (context, index) {
+                            String imageUrl = productToEdit.imageUrls![index];
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  imageUrl,
+                                  width: 90,
+                                  height: 90,
+                                  fit: BoxFit.cover,
+                                  errorBuilder:
+                                      (context, error, stackTrace) => Container(
+                                        width: 90,
+                                        height: 90,
+                                        color: AppColors.imagePlaceholderLight,
+                                        child: Center(
+                                          child: Icon(
+                                            Icons.broken_image,
+                                            color: AppColors.subtleGrey,
+                                          ),
+                                        ),
+                                      ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 15),
+                    _buildTextField(
+                      discountController,
+                      'Discount (optional)',
+                      Icons.discount,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
                 ),
               ),
-              child: Text(
-                isEditing ? 'Save Changes' : 'Add Product',
-                style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ],
+              actions: <Widget>[
+                TextButton(
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.montserrat(color: AppColors.subtleGrey),
+                  ),
+                  onPressed: () {
+                    setDialogState(() {
+                      _selectedFiles = [];
+                    });
+                    Navigator.of(dialogContext).pop();
+                  },
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (nameController.text.isEmpty ||
+                        priceController.text.isEmpty ||
+                        stockController.text.isEmpty ||
+                        brandIdController.text.isEmpty) {
+                      _showSnackBar(
+                        'Name, Price, Stock, and Brand ID cannot be empty.',
+                        AppColors.redAccent,
+                      );
+                      return;
+                    }
+                    if (int.tryParse(priceController.text) == null ||
+                        int.tryParse(stockController.text) == null ||
+                        int.tryParse(brandIdController.text) == null) {
+                      _showSnackBar(
+                        'Price, Stock, and Brand ID must be valid numbers.',
+                        AppColors.redAccent,
+                      );
+                      return;
+                    }
+
+                    double? discountValue;
+                    if (discountController.text.isNotEmpty) {
+                      discountValue = double.tryParse(discountController.text);
+                      if (discountValue == null) {
+                        _showSnackBar(
+                          'Discount must be a valid number.',
+                          AppColors.redAccent,
+                        );
+                        return;
+                      }
+                    }
+
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder:
+                          (context) => Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.primaryGold,
+                              ),
+                            ),
+                          ),
+                    );
+
+                    List<String>? imagesToSend;
+                    if (_selectedFiles.isNotEmpty) {
+                      List<Future<String?>> base64Futures =
+                          _selectedFiles
+                              .map((file) => _fileToBase64(file))
+                              .toList();
+                      List<String?> convertedImages = await Future.wait(
+                        base64Futures,
+                      );
+                      imagesToSend =
+                          convertedImages.whereType<String>().toList();
+
+                      if (imagesToSend.length != _selectedFiles.length) {
+                        if (mounted) Navigator.of(context).pop();
+                        _showSnackBar(
+                          'Failed to convert one or more images to Base64. Please try again.',
+                          AppColors.redAccent,
+                        );
+                        return;
+                      }
+                    } else if (isEditing &&
+                        productToEdit!.imageUrls != null &&
+                        productToEdit.imageUrls!.isNotEmpty) {
+                      imagesToSend = productToEdit.imageUrls;
+                    }
+
+                    try {
+                      if (isEditing) {
+                        await _apiProvider.updateProduct(
+                          productId: productToEdit!.id!,
+                          name: nameController.text,
+                          price: int.parse(priceController.text),
+                          stock: int.parse(stockController.text),
+                          brandId: int.parse(brandIdController.text),
+                          description: descriptionController.text,
+                          images: imagesToSend,
+                          discount: discountValue,
+                        );
+                        _showSnackBar(
+                          'Product updated successfully!',
+                          AppColors.green,
+                        );
+                      } else {
+                        await _apiProvider.addProduct(
+                          name: nameController.text,
+                          price: int.parse(priceController.text),
+                          stock: int.parse(stockController.text),
+                          brandId: int.parse(brandIdController.text),
+                          description: descriptionController.text,
+                          images: imagesToSend,
+                          discount: discountValue,
+                        );
+                        _showSnackBar(
+                          'Product added successfully!',
+                          AppColors.green,
+                        );
+                      }
+                      if (mounted) Navigator.of(context).pop();
+                      if (mounted) Navigator.of(dialogContext).pop();
+                      _fetchProducts();
+                    } on Exception catch (e) {
+                      if (mounted) Navigator.of(context).pop();
+                      _showSnackBar(
+                        'Operation failed: ${e.toString().replaceFirst('Exception: ', '')}',
+                        AppColors.redAccent,
+                      );
+                    } finally {
+                      setDialogState(() {
+                        _selectedFiles = [];
+                      });
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryGold,
+                    foregroundColor: AppColors.darkBackground,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: Text(
+                    isEditing ? 'Save Changes' : 'Add Product',
+                    style: GoogleFonts.montserrat(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -346,6 +545,15 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
 
   // Function to confirm product deletion
   Future<void> _confirmDelete(Product product) async {
+    // Only allow if admin
+    if (!_isAdmin) {
+      _showSnackBar(
+        'Permission Denied: You are not authorized to delete products.',
+        AppColors.redAccent,
+      );
+      return;
+    }
+
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -523,9 +731,23 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                         fontSize: 12,
                       ),
                     ),
-                  if (product.brandId != null)
+                  if (product.brandName != null &&
+                      product
+                          .brandName!
+                          .isNotEmpty) // Corrected to brandName if your model has it
                     Text(
-                      'Brand ID: ${product.brandId}',
+                      'Brand: ${product.brandName}', // Display brandName
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.subtleText,
+                        fontSize: 12,
+                      ),
+                    ),
+                  if (product.categoryName != null &&
+                      product
+                          .categoryName!
+                          .isNotEmpty) // Assuming categoryName exists
+                    Text(
+                      'Category: ${product.categoryName}', // Display categoryName
                       style: GoogleFonts.montserrat(
                         color: AppColors.subtleText,
                         fontSize: 12,
@@ -545,11 +767,11 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  if (product.discount != null)
+                  if (product.discount != null && product.discount! > 0)
                     Text(
-                      'Discount: ${product.discount}%',
+                      'Discount: ${product.discount!.toInt()}%',
                       style: GoogleFonts.montserrat(
-                        color: AppColors.redAccent,
+                        color: AppColors.green,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -557,16 +779,19 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                 ],
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.edit, color: AppColors.blue),
-              onPressed: () => _showProductFormDialog(productToEdit: product),
-              tooltip: 'Edit Product',
-            ),
-            IconButton(
-              icon: const Icon(Icons.delete, color: AppColors.redAccent),
-              onPressed: () => _confirmDelete(product),
-              tooltip: 'Delete Product',
-            ),
+            // Only show edit/delete buttons if admin
+            if (_isAdmin)
+              IconButton(
+                icon: const Icon(Icons.edit, color: AppColors.blue),
+                onPressed: () => _showProductFormDialog(productToEdit: product),
+                tooltip: 'Edit Product',
+              ),
+            if (_isAdmin)
+              IconButton(
+                icon: const Icon(Icons.delete, color: AppColors.redAccent),
+                onPressed: () => _confirmDelete(product),
+                tooltip: 'Delete Product',
+              ),
           ],
         ),
       ),
@@ -594,6 +819,16 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
             Navigator.pop(context);
           },
         ),
+        actions: [
+          // Only show add button if admin
+          if (_isAdmin)
+            FloatingActionButton(
+              onPressed: () => _showProductFormDialog(),
+              backgroundColor: AppColors.primaryGold,
+              tooltip: 'Add New Product',
+              child: const Icon(Icons.add, color: AppColors.darkBackground),
+            ),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(
@@ -604,7 +839,8 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
           ),
         ),
         child: RefreshIndicator(
-          onRefresh: _isAdmin ? _fetchProducts : () async {},
+          onRefresh:
+              _isAdmin ? _fetchProducts : () async {}, // Only refresh if admin
           color: AppColors.primaryGold,
           child:
               _isLoading
@@ -631,8 +867,12 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                             ),
                           ),
                           const SizedBox(height: 20),
+                          // Only show retry/login if admin and relevant error
                           if (_isAdmin &&
-                              _errorMessage!.contains('Unauthorized'))
+                              (_errorMessage!.contains(
+                                    'Authentication token is missing',
+                                  ) ||
+                                  _errorMessage!.contains('Unauthorized')))
                             ElevatedButton(
                               onPressed: () {
                                 _showSnackBar(
@@ -658,7 +898,7 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                                 ),
                               ),
                             )
-                          else if (_isAdmin)
+                          else if (_isAdmin) // General retry for admins
                             ElevatedButton(
                               onPressed: _fetchProducts,
                               style: ElevatedButton.styleFrom(
@@ -682,7 +922,9 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                   : _products.isEmpty
                   ? Center(
                     child: Text(
-                      'No products found. Add a new one!',
+                      _isAdmin
+                          ? 'No products found. Add a new one!'
+                          : 'No products available.', // Different message for non-admin
                       style: GoogleFonts.playfairDisplay(
                         color: AppColors.subtleGrey,
                         fontSize: 18,
@@ -700,15 +942,15 @@ class _ManageProductsScreen16State extends State<ManageProductsScreen16> {
                   ),
         ),
       ),
-      floatingActionButton:
-          _isAdmin
-              ? FloatingActionButton(
-                onPressed: () => _showProductFormDialog(),
-                backgroundColor: AppColors.primaryGold,
-                tooltip: 'Add New Product',
-                child: const Icon(Icons.add, color: AppColors.darkBackground),
-              )
-              : null,
+      // FloatingActionButton moved into AppBar actions if _isAdmin is true
+      // floatingActionButton: _isAdmin
+      //     ? FloatingActionButton(
+      //         onPressed: () => _showProductFormDialog(),
+      //         backgroundColor: AppColors.primaryGold,
+      //         tooltip: 'Add New Product',
+      //         child: const Icon(Icons.add, color: AppColors.darkBackground),
+      //       )
+      //     : null,
     );
   }
 }

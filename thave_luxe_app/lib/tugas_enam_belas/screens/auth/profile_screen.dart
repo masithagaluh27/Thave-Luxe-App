@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/helper/preference_handler.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/manage_product_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart';
@@ -17,8 +16,7 @@ class ProfileScreen16 extends StatefulWidget {
 }
 
 class _ProfileScreen16State extends State<ProfileScreen16> {
-  late Future<User?> _userProfileFuture; // Change to Future<User?>
-  final ApiProvider _apiProvider = ApiProvider(); // Still needed for logout
+  late Future<User?> _userProfileFuture;
 
   @override
   void initState() {
@@ -26,15 +24,12 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
     _userProfileFuture = _fetchUserProfile();
   }
 
-  // Modified to fetch user data from local preferences
   Future<User?> _fetchUserProfile() async {
     try {
       final user = await PreferenceHandler.getUserData();
       return user;
     } catch (e) {
       debugPrint('Error fetching local user data: $e');
-      // If there's an error or no user data, it implies not logged in or data issue.
-      // We can return null to indicate no user is loaded.
       return null;
     }
   }
@@ -69,11 +64,8 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
     );
 
     try {
-      final response = await _apiProvider.logout();
-      if (response.message != null) {
-        _showSnackBar(response.message!, AppColors.green);
-      }
-      await PreferenceHandler.clearUserDetails();
+      await PreferenceHandler.clearUserDetails(); // Clear local user data
+      _showSnackBar('Logged out successfully!', AppColors.green);
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const LoginScreen16()),
@@ -81,7 +73,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         );
       }
     } catch (e) {
-      debugPrint('Logout error: $e');
+      debugPrint('Logout error (local preference clear): $e');
       _showSnackBar(
         'Logout failed: ${e.toString().replaceFirst('Exception: ', '')}',
         AppColors.redAccent,
@@ -99,13 +91,16 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
+            // Updated gradient for background
+            colors: [
+              AppColors.backgroundGradientStartDark,
+              AppColors.darkBackground,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: FutureBuilder<User?>(
-          // Expecting User?
           future: _userProfileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -117,7 +112,6 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                 ),
               );
             } else if (snapshot.hasError) {
-              // This block might not be hit if _fetchUserProfile handles errors by returning null
               return Center(
                 child: Text(
                   'Error loading profile: ${snapshot.error}',
@@ -138,10 +132,9 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       title: 'Edit Profile',
                       onTap: () {
                         _showSnackBar(
-                          'Edit Profile clicked!',
+                          'Edit Profile functionality not yet implemented.',
                           AppColors.subtleGrey,
                         );
-                        // Implement navigation to edit profile screen
                       },
                     ),
                     _buildProfileOption(
@@ -156,13 +149,12 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       title: 'Favorite Products',
                       onTap: () {
                         _showSnackBar(
-                          'Favorite Products clicked!',
+                          'Favorite Products functionality not yet implemented.',
                           AppColors.subtleGrey,
                         );
                       },
                     ),
-                    if (user.email ==
-                        'admin@gmail.com') // Check if user is admin
+                    if (user.email == 'admin@gmail.com')
                       _buildProfileOption(
                         icon: Icons.admin_panel_settings_outlined,
                         title: 'Manage Products',
@@ -184,13 +176,16 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       onTap: _handleLogout,
                       isLogout: true,
                     ),
-                    const SizedBox(height: 20),
+                    // Reduced bottom padding
+                    const SizedBox(height: 10),
                     _buildAppVersion(),
+                    const SizedBox(
+                      height: 10,
+                    ), // A little extra space at the very bottom
                   ],
                 ),
               );
             } else {
-              // No user data found, prompt to login
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -202,7 +197,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'No user logged in.',
+                      'No user logged in.\nPlease login to view your profile.',
                       style: GoogleFonts.montserrat(
                         fontSize: 20,
                         color: AppColors.subtleText,
@@ -264,19 +259,43 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         ),
       ),
       centerTitle: true,
-      actions: const <Widget>[
-        // You can add actions here if needed, e.g., a settings icon
-      ],
+      actions: const <Widget>[],
     );
   }
 
   Widget _buildProfileHeader(User user) {
     return Column(
       children: <Widget>[
-        CircleAvatar(
-          radius: 60,
-          backgroundColor: AppColors.primaryGold.withOpacity(0.2),
-          child: Icon(Icons.person, size: 70, color: AppColors.primaryGold),
+        // Updated profile photo design
+        Container(
+          width: 120, // Increased size slightly
+          height: 120,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: AppColors.primaryGold, // Solid gold background
+            border: Border.all(
+              color: AppColors.borderGold, // Richer gold border
+              width: 3,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowColor.withOpacity(
+                  0.5,
+                ), // Stronger shadow
+                blurRadius: 15,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Icon(
+              Icons.person,
+              size: 80, // Larger icon
+              color:
+                  AppColors
+                      .darkBackground, // Dark background color for the icon
+            ),
+          ),
         ),
         const SizedBox(height: 20),
         Text(
@@ -292,7 +311,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
           user.email ?? 'No Email',
           style: GoogleFonts.montserrat(
             fontSize: 16,
-            color: AppColors.subtleText,
+            color: AppColors.subtleGrey,
           ),
         ),
       ],
@@ -308,7 +327,14 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
     return Card(
       color: AppColors.cardBackgroundDark,
       margin: const EdgeInsets.symmetric(vertical: 10.0),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+        // Added a subtle border to the cards
+        side: BorderSide(
+          color: AppColors.borderGold.withOpacity(0.3), // Light gold border
+          width: 1.0,
+        ),
+      ),
       elevation: 5,
       shadowColor: AppColors.shadowColor,
       child: InkWell(
