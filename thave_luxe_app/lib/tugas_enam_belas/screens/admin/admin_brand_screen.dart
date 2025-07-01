@@ -144,7 +144,7 @@ class _ManageBrandsScreen16State extends State<ManageBrandsScreen16> {
                 try {
                   if (isEditing) {
                     await _apiProvider.updateBrand(
-                      brandId: brandToEdit!.id!,
+                      brandId: brandToEdit.id!,
                       name: nameController.text,
                     );
                     _showSnackBar(

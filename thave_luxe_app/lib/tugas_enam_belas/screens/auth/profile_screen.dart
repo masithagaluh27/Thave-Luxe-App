@@ -4,12 +4,10 @@ import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/helper/preference_handler.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/admin_dashboard_screen.dart';
-
 import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart';
 
 class ProfileScreen16 extends StatefulWidget {
   const ProfileScreen16({super.key});
-
   static const String id = '/profile16';
 
   @override
@@ -28,7 +26,6 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
   Future<User?> _fetchUserProfile() async {
     try {
       final user = await PreferenceHandler.getUserData();
-      // >>> DEBUG PRINT: Check what user data is being fetched
       debugPrint('PROFILE_SCREEN: Fetched user data: ${user?.toJson()}');
       return user;
     } catch (e) {
@@ -55,37 +52,46 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
   }
 
   Future<void> _handleLogout() async {
+    // 1. Show loader dialog
     showDialog(
       context: context,
       barrierDismissible: false,
       builder:
-          (context) => Center(
+          (_) => const Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+              valueColor: AlwaysStoppedAnimation(AppColors.primaryGold),
             ),
           ),
     );
 
     try {
-      await PreferenceHandler.clearUserDetails(); // Clear local user data
-      _showSnackBar(
-        'Logged out successfully!',
-        AppColors.successGreen,
-      ); // Used successGreen
+      await PreferenceHandler.clearUserDetails(); // 2. Clear user data
+
+      // 3. Close the dialog BEFORE navigation
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // 4. Show success snackbar (optional)
+      _showSnackBar('Logged out successfully!', AppColors.successGreen);
+
+      // 5. Navigate to Login screen
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen16()),
+          MaterialPageRoute(builder: (_) => const LoginScreen16()),
           (Route<dynamic> route) => false,
         );
       }
     } catch (e) {
-      debugPrint('PROFILE_SCREEN: Logout error (local preference clear): $e');
+      // 6. Close loader if error happens
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
       _showSnackBar(
         'Logout failed: ${e.toString().replaceFirst('Exception: ', '')}',
         AppColors.redAccent,
       );
-    } finally {
-      if (mounted) Navigator.of(context).pop(); // Dismiss loading indicator
     }
   }
 
@@ -97,11 +103,9 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            // Using backgroundGradientLight for consistency
             colors: [
               AppColors.backgroundLight,
-              AppColors
-                  .backgroundGradientLight, // Updated to use the defined gradient end color
+              AppColors.backgroundGradientLight,
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -110,12 +114,8 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         child: FutureBuilder<User?>(
           future: _userProfileFuture,
           builder: (context, snapshot) {
-            // >>> DEBUG PRINT: Check connection state
-            debugPrint(
-              'PROFILE_SCREEN: FutureBuilder ConnectionState: ${snapshot.connectionState}',
-            );
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
+              return const Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
                     AppColors.primaryGold,
@@ -123,24 +123,14 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                 ),
               );
             } else if (snapshot.hasError) {
-              // >>> DEBUG PRINT: Check error message
-              debugPrint(
-                'PROFILE_SCREEN: FutureBuilder Error: ${snapshot.error}',
-              );
               return Center(
                 child: Text(
                   'Error loading profile: ${snapshot.error}',
-                  style: GoogleFonts.montserrat(
-                    color: AppColors.errorRed,
-                  ), // Changed to errorRed
+                  style: GoogleFonts.montserrat(color: AppColors.errorRed),
                 ),
               );
             } else if (snapshot.hasData && snapshot.data != null) {
               final User user = snapshot.data!;
-              // >>> DEBUG PRINT: Check user data being displayed
-              debugPrint(
-                'PROFILE_SCREEN: Displaying user: ${user.name}, ${user.email}',
-              );
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
@@ -178,7 +168,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (context) => AdminDashboardScreen16(
+                                  (_) => AdminDashboardScreen16(
                                     userEmail: user.email,
                                   ),
                             ),
@@ -198,15 +188,11 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                 ),
               );
             } else {
-              // >>> DEBUG PRINT: User is null/no data
-              debugPrint(
-                'PROFILE_SCREEN: No user data found, displaying login prompt.',
-              );
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.person_off_outlined,
                       size: 80,
                       color: AppColors.iconDark,
@@ -225,9 +211,9 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       onPressed: () {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
-                            builder: (context) => const LoginScreen16(),
+                            builder: (_) => const LoginScreen16(),
                           ),
-                          (Route<dynamic> route) => false,
+                          (_) => false,
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -261,10 +247,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios,
-          color: AppColors.iconDark, // Changed to iconDark for consistency
-        ),
+        icon: const Icon(Icons.arrow_back_ios, color: AppColors.iconDark),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -278,7 +261,6 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         ),
       ),
       centerTitle: true,
-      actions: const <Widget>[],
     );
   }
 
@@ -300,13 +282,8 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
               ),
             ],
           ),
-          child: Center(
-            child: Icon(
-              Icons.person,
-              size: 80,
-              color:
-                  AppColors.textLight, // TextLight for icon on gold background
-            ),
+          child: const Center(
+            child: Icon(Icons.person, size: 80, color: AppColors.textLight),
           ),
         ),
         const SizedBox(height: 20),
@@ -343,8 +320,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         borderRadius: BorderRadius.circular(15),
         side: BorderSide(
           color:
-              AppColors.subtleBorder ??
-              AppColors.subtleText.withOpacity(0.3), // Use subtleBorder
+              AppColors.subtleBorder ?? AppColors.subtleText.withOpacity(0.3),
           width: 1.0,
         ),
       ),
@@ -359,10 +335,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
             children: <Widget>[
               Icon(
                 icon,
-                color:
-                    isLogout
-                        ? AppColors.errorRed
-                        : AppColors.primaryGold, // Used errorRed for logout
+                color: isLogout ? AppColors.errorRed : AppColors.primaryGold,
                 size: 28,
               ),
               const SizedBox(width: 20),
@@ -372,21 +345,13 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                   style: GoogleFonts.montserrat(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color:
-                        isLogout
-                            ? AppColors
-                                .errorRed // Used errorRed for logout text
-                            : AppColors.textDark,
+                    color: isLogout ? AppColors.errorRed : AppColors.textDark,
                   ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
-                color:
-                    isLogout
-                        ? AppColors
-                            .errorRed // Used errorRed for logout arrow
-                        : AppColors.iconDark,
+                color: isLogout ? AppColors.errorRed : AppColors.iconDark,
                 size: 20,
               ),
             ],
@@ -398,7 +363,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
 
   Widget _buildAppVersion() {
     return Text(
-      'App Version 1.0.0', // Replace with actual version from pubspec.yaml if desired
+      'App Version 1.0.0',
       style: GoogleFonts.montserrat(fontSize: 12, color: AppColors.subtleText),
     );
   }

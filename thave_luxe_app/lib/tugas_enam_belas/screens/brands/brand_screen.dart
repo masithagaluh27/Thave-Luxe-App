@@ -9,9 +9,10 @@ import 'package:thave_luxe_app/tugas_enam_belas/screens/brands/brands_detail_scr
 class BrandScreen16 extends StatefulWidget {
   static const String id = '/brandScreen16';
 
-  /// <-- NEW : brand terpilih (null kalau mau list semua brand)
   final Brand? selectedBrand;
-  const BrandScreen16({Key? key, this.selectedBrand}) : super(key: key);
+  final int? brandId; // Made optional
+
+  const BrandScreen16({super.key, this.selectedBrand, this.brandId});
 
   @override
   State<BrandScreen16> createState() => _BrandScreen16State();
@@ -36,17 +37,56 @@ class _BrandScreen16State extends State<BrandScreen16> {
             builder:
                 (_) => BrandDetailScreen16(
                   brandId: widget.selectedBrand!.id!,
-                  brandName: widget.selectedBrand!.name ?? 'Brand',
+                  brandName: widget.selectedBrand!.name ?? '',
                 ),
           ),
         );
       });
+    } else if (widget.brandId != null) {
+      _fetchSpecificBrandAndNavigate(widget.brandId!);
     } else {
       _fetchBrands();
     }
   }
 
-  // ---------------------------------------------------------------------------
+  Future<void> _fetchSpecificBrandAndNavigate(int brandId) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final brandResponse = await _apiProvider.getBrands();
+      final specificBrand = brandResponse.data?.firstWhere(
+        (brand) => brand.id == brandId,
+        orElse: () => throw Exception('Brand with ID $brandId not found.'),
+      );
+
+      if (mounted && specificBrand != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder:
+                (_) => BrandDetailScreen16(
+                  brandId: specificBrand.id!,
+                  brandName: specificBrand.name ?? '',
+                ),
+          ),
+        );
+      } else {
+        setState(() {
+          _errorMessage = 'Brand with ID $brandId not found.';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage =
+            'Failed to load specific brand: ${e.toString().replaceFirst('Exception: ', '')}';
+        _isLoading = false;
+      });
+    }
+  }
+
   Future<void> _fetchBrands() async {
     setState(() {
       _isLoading = true;
@@ -58,7 +98,8 @@ class _BrandScreen16State extends State<BrandScreen16> {
       setState(() {
         _brands = brandResponse.data ?? [];
         _isLoading = false;
-        if (_brands.isEmpty) {
+        if (_brands.isEmpty && brandResponse.status != 'success') {
+          // Only show error if status is not success
           _errorMessage =
               brandResponse.message?.isNotEmpty == true
                   ? brandResponse.message
@@ -74,7 +115,6 @@ class _BrandScreen16State extends State<BrandScreen16> {
     }
   }
 
-  // ---------------------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -114,7 +154,6 @@ class _BrandScreen16State extends State<BrandScreen16> {
     ],
   );
 
-  // ---------------------------------------------------------------------------
   Widget _buildLoadingState() => Center(
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -172,7 +211,6 @@ class _BrandScreen16State extends State<BrandScreen16> {
     ),
   );
 
-  // ---------------------------------------------------------------------------
   Widget _buildBrandList() => ListView.builder(
     padding: const EdgeInsets.all(16),
     itemCount: _brands.length,
@@ -188,7 +226,7 @@ class _BrandScreen16State extends State<BrandScreen16> {
                 builder:
                     (_) => BrandDetailScreen16(
                       brandId: brand.id!,
-                      brandName: brand.name!,
+                      brandName: brand.name ?? '',
                     ),
               ),
             );
@@ -209,14 +247,10 @@ class _BrandScreen16State extends State<BrandScreen16> {
   );
 }
 
-// ============================================================================
-// Widget Kartu Brand
-// ============================================================================
 class BrandCard extends StatelessWidget {
   final Brand brand;
   final VoidCallback onTap;
-  const BrandCard({Key? key, required this.brand, required this.onTap})
-    : super(key: key);
+  const BrandCard({super.key, required this.brand, required this.onTap});
 
   @override
   Widget build(BuildContext context) => GestureDetector(
@@ -251,7 +285,8 @@ class BrandCard extends StatelessWidget {
           ),
           const Icon(
             Icons.arrow_forward_ios,
-            color: Color.fromARGB(255, 255, 255, 255),
+            color:
+                AppColors.subtleGrey, // Changed to subtleGrey for consistency
             size: 20,
           ),
         ],

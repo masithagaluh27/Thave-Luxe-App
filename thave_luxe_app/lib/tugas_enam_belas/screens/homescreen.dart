@@ -3,11 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/profile_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/brands/brand_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/cart_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/category/category_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/product/product_detail_screen.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/profile_screen.dart';
 
 class HomeScreen16 extends StatefulWidget {
   const HomeScreen16({super.key});
@@ -424,15 +424,12 @@ class _HomeScreen16State extends State<HomeScreen16> {
       setState(() => _navIndex = i);
       switch (i) {
         case 1:
-          Navigator.pushNamed(context, BrandScreen16.id);
-          break;
-        case 2:
           Navigator.pushNamed(context, CartScreen16.id);
           break;
-        case 3:
+        case 2:
           Navigator.pushNamed(context, CategoryScreen.id);
           break;
-        case 4:
+        case 3:
           Navigator.pushNamed(context, ProfileScreen16.id);
           break;
       }
@@ -443,10 +440,7 @@ class _HomeScreen16State extends State<HomeScreen16> {
     type: BottomNavigationBarType.fixed,
     items: const [
       BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-      BottomNavigationBarItem(
-        icon: Icon(Icons.category_outlined),
-        label: 'Brands',
-      ),
+
       BottomNavigationBarItem(
         icon: Icon(Icons.shopping_bag_outlined),
         label: 'Cart',

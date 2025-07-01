@@ -1,8 +1,10 @@
 import 'dart:convert';
-import 'package:flutter/material.dart'; // For debugPrint
+
+import 'package:flutter/foundation.dart'; // Preferred for debugPrint in non-UI files
 import 'package:http/http.dart' as http;
-import 'package:thave_luxe_app/helper/preference_handler.dart'; // Ensure this path is correct
-import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Your app models
+import 'package:thave_luxe_app/helper/preference_handler.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'
+    as app_models; // Import all your models with prefix
 
 class ApiProvider {
   static const String _baseUrl = 'https://apptoko.mobileprojp.com/api';
@@ -14,34 +16,43 @@ class ApiProvider {
     };
 
     if (useAuth) {
-      final String? token =
-          await PreferenceHandler.getToken(); // Get token using your method
-      if (token != null) {
+      final String? token = await PreferenceHandler.getToken();
+      if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
+        debugPrint('Headers: Using Authorization token.');
       } else {
-        debugPrint('Warning: No token found for authenticated request.');
+        debugPrint(
+          'Warning: No token found or token is empty for authenticated request.',
+        );
+        // Throw an exception immediately if a token is required but missing/empty
         throw Exception('Authentication token is missing. Please log in.');
       }
+    } else {
+      debugPrint('Headers: No authentication token required for this request.');
     }
     return headers;
   }
 
-  // ... (_handleResponse and _handleResponseNoData remain the same) ...
-  Future<ApiResponse<T>> _handleResponse<T>(
+  Future<app_models.ApiResponse<T>> _handleResponse<T>(
     http.Response response,
     T Function(dynamic json) fromJsonT,
   ) async {
+    debugPrint('API Response URL: ${response.request?.url}');
     debugPrint('API Response Status: ${response.statusCode}');
     debugPrint('API Response Body: ${response.body}');
 
     try {
+      // Decode JSON even for error responses to get message/errors
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return ApiResponse<T>.fromJson(jsonResponse, fromJsonT);
+        debugPrint(
+          'API Response Success: Status ${jsonResponse['status']}, Message: ${jsonResponse['message']}',
+        );
+        return app_models.ApiResponse<T>.fromJson(jsonResponse, fromJsonT);
       } else if (response.statusCode >= 400 && response.statusCode < 500) {
         String errorMessage =
-            jsonResponse['message'] as String? ?? 'An error occurred.';
+            jsonResponse['message']?.toString() ?? 'An error occurred.';
         if (jsonResponse['errors'] != null && jsonResponse['errors'] is Map) {
           final Map<String, dynamic> errors = jsonResponse['errors'];
           errors.forEach((key, value) {
@@ -50,21 +61,32 @@ class ApiProvider {
             }
           });
         }
-        throw Exception(errorMessage);
-      } else {
-        throw Exception(
-          jsonResponse['message'] ?? 'Server error: ${response.statusCode}',
+        debugPrint(
+          'API Response Client Error (${response.statusCode}): $errorMessage',
         );
+        throw Exception(
+          errorMessage,
+        ); // Throw to be caught by specific API call
+      } else {
+        String serverError =
+            jsonResponse['message'] ?? 'Server error: ${response.statusCode}';
+        debugPrint(
+          'API Response Server Error (${response.statusCode}): $serverError',
+        );
+        throw Exception(serverError); // Throw to be caught by specific API call
       }
     } catch (e) {
-      debugPrint('Error parsing API response: $e');
+      debugPrint('Error parsing or handling API response: $e');
+      debugPrint('Raw response body: ${response.body}');
+      // Re-throw as a more general exception if needed, or wrap in ApiResponse.error
       throw Exception('Failed to process API response: ${e.toString()}');
     }
   }
 
-  Future<ApiResponse<void>> _handleResponseNoData(
+  Future<app_models.ApiResponse<void>> _handleResponseNoData(
     http.Response response,
   ) async {
+    debugPrint('API Response URL: ${response.request?.url}');
     debugPrint('API Response Status: ${response.statusCode}');
     debugPrint('API Response Body: ${response.body}');
 
@@ -72,7 +94,10 @@ class ApiProvider {
       final Map<String, dynamic> jsonResponse = json.decode(response.body);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        return ApiResponse<void>.fromJsonNoData(jsonResponse);
+        debugPrint(
+          'API Response Success (No Data): Status ${jsonResponse['status']}, Message: ${jsonResponse['message']}',
+        );
+        return app_models.ApiResponse<void>.fromJsonNoData(jsonResponse);
       } else if (response.statusCode >= 400 && response.statusCode < 500) {
         String errorMessage =
             jsonResponse['message'] as String? ?? 'An error occurred.';
@@ -84,128 +109,157 @@ class ApiProvider {
             }
           });
         }
+        debugPrint(
+          'API Response Client Error (No Data, ${response.statusCode}): $errorMessage',
+        );
         throw Exception(errorMessage);
       } else {
-        throw Exception(
-          jsonResponse['message'] ?? 'Server error: ${response.statusCode}',
+        String serverError =
+            jsonResponse['message'] ?? 'Server error: ${response.statusCode}';
+        debugPrint(
+          'API Response Server Error (No Data, ${response.statusCode}): $serverError',
         );
+        throw Exception(serverError);
       }
     } catch (e) {
-      debugPrint('Error parsing API response (no data): $e');
+      debugPrint('Error parsing or handling API response (no data): $e');
+      debugPrint('Raw response body: ${response.body}');
       throw Exception('Failed to process API response: ${e.toString()}');
     }
   }
 
-  // -----------------------------------------------------------------------------
-  // Auth API Calls
-  // -----------------------------------------------------------------------------
-
-  Future<ApiResponse<AuthData>> register({
+  // --- Auth API Calls ---
+  Future<app_models.ApiResponse<app_models.AuthData>> register({
     required String name,
     required String email,
     required String password,
   }) async {
     final url = Uri.parse('$_baseUrl/register');
-    final headers = await _getHeaders(useAuth: false);
-    final body = json.encode({
-      'name': name,
-      'email': email,
-      'password': password,
-    });
+    debugPrint('Registering user: $email');
+    try {
+      final headers = await _getHeaders(useAuth: false);
+      final body = json.encode({
+        'name': name,
+        'email': email,
+        'password': password,
+      });
+      debugPrint('Request Body: $body');
 
-    final response = await http.post(url, headers: headers, body: body);
-    final apiResponse = await _handleResponse<AuthData>(
-      response,
-      (json) => AuthData.fromJson(json),
-    );
+      final response = await http.post(url, headers: headers, body: body);
+      final apiResponse = await _handleResponse<app_models.AuthData>(
+        response,
+        (json) => app_models.AuthData.fromJson(json),
+      );
 
-    // After successful registration (if it also logs in and returns a token/user)
-    if (apiResponse.status == 'success' && apiResponse.data != null) {
-      if (apiResponse.data!.token != null) {
-        await PreferenceHandler.setToken(
-          apiResponse.data!.token!,
-        ); // Use your setToken
+      if (apiResponse.status == 'success' && apiResponse.data != null) {
+        if (apiResponse.data!.token != null) {
+          await PreferenceHandler.setToken(apiResponse.data!.token!);
+        }
+        if (apiResponse.data!.user != null) {
+          await PreferenceHandler.setUserData(apiResponse.data!.user!);
+        }
+        debugPrint(
+          'Registration successful. Data saved via PreferenceHandler.',
+        );
       }
-      if (apiResponse.data!.user != null) {
-        await PreferenceHandler.setUserData(
-          apiResponse.data!.user!,
-        ); // Use your setUserData
-      }
-      debugPrint('Registration successful. Data saved via PreferenceHandler.');
+      return apiResponse;
+    } catch (e) {
+      debugPrint('Error in register: $e');
+      return app_models.ApiResponse.error(
+        error: 'Registration failed: ${e.toString()}',
+      );
     }
-    return apiResponse;
   }
 
-  Future<ApiResponse<AuthData>> login({
+  Future<app_models.ApiResponse<app_models.AuthData>> login({
     required String email,
     required String password,
   }) async {
     final url = Uri.parse('$_baseUrl/login');
-    final headers = await _getHeaders(useAuth: false);
-    final body = json.encode({'email': email, 'password': password});
+    debugPrint('Attempting login for: $email');
+    try {
+      final headers = await _getHeaders(useAuth: false);
+      final body = json.encode({'email': email, 'password': password});
+      debugPrint('Request Body: $body');
 
-    final response = await http.post(url, headers: headers, body: body);
-    final apiResponse = await _handleResponse<AuthData>(
-      response,
-      (json) => AuthData.fromJson(json),
-    );
+      final response = await http.post(url, headers: headers, body: body);
+      final apiResponse = await _handleResponse<app_models.AuthData>(
+        response,
+        (json) => app_models.AuthData.fromJson(json),
+      );
 
-    // After successful login, save the token and user data
-    if (apiResponse.status == 'success' && apiResponse.data != null) {
-      if (apiResponse.data!.token != null) {
-        await PreferenceHandler.setToken(
-          apiResponse.data!.token!,
-        ); // Use your setToken
+      if (apiResponse.status == 'success' && apiResponse.data != null) {
+        if (apiResponse.data!.token != null) {
+          await PreferenceHandler.setToken(apiResponse.data!.token!);
+        }
+        if (apiResponse.data!.user != null) {
+          await PreferenceHandler.setUserData(apiResponse.data!.user!);
+        }
+        debugPrint('Login successful. Data saved via PreferenceHandler.');
       }
-      if (apiResponse.data!.user != null) {
-        await PreferenceHandler.setUserData(
-          apiResponse.data!.user!,
-        ); // Use your setUserData
-      }
-      debugPrint('Login successful. Data saved via PreferenceHandler.');
+      return apiResponse;
+    } catch (e) {
+      debugPrint('Error in login: $e');
+      return app_models.ApiResponse.error(
+        error: 'Login failed: ${e.toString()}',
+      );
     }
-    return apiResponse;
   }
 
-  Future<ApiResponse<void>> logout() async {
+  Future<app_models.ApiResponse<void>> logout() async {
     final url = Uri.parse('$_baseUrl/logout');
-    // Try to send token for server-side invalidation
-    final headers = await _getHeaders();
-    final response = await http.post(url, headers: headers);
-    final apiResponse = await _handleResponseNoData(response);
-
-    // Always clear client-side data, regardless of server response
-    await PreferenceHandler.clearToken(); // Use your clearToken
-    await PreferenceHandler.clearUserDetails(); // Use your clearUserDetails
-    // Or if you prefer clearing everything: await PreferenceHandler.clearAllPreferences();
-    debugPrint(
-      'Logout processed. Client-side data cleared via PreferenceHandler.',
-    );
-    return apiResponse;
+    debugPrint('Attempting logout...');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(url, headers: headers);
+      final apiResponse = await _handleResponseNoData(response);
+      debugPrint('API logout response received.');
+      return apiResponse;
+    } catch (e) {
+      debugPrint('Error making API logout call: $e');
+      return app_models.ApiResponse.error(
+        error: 'Logout failed: ${e.toString()}',
+      );
+    } finally {
+      // Always clear client-side data, regardless of server response or network error
+      await PreferenceHandler.clearToken();
+      await PreferenceHandler.clearUserDetails();
+      debugPrint(
+        'Client-side data cleared via PreferenceHandler in logout finally.',
+      );
+    }
   }
 
-  Future<ApiResponse<User>> getProfile() async {
+  Future<app_models.ApiResponse<app_models.User>> getProfile() async {
     final url = Uri.parse('$_baseUrl/user');
-    final headers = await _getHeaders();
-    final response = await http.get(url, headers: headers);
-    return _handleResponse<User>(response, (json) => User.fromJson(json));
+    debugPrint('Fetching user profile...');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      return _handleResponse<app_models.User>(
+        response,
+        (json) => app_models.User.fromJson(json),
+      );
+    } catch (e) {
+      debugPrint('Error in getProfile: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to fetch profile: ${e.toString()}',
+      );
+    }
   }
 
-  // Convenience getter to check login status
   Future<bool> get isLoggedIn async {
-    // Check if both a token and user data exist
     final String? token = await PreferenceHandler.getToken();
-    final User? user = await PreferenceHandler.getUserData();
+    final app_models.User? user = await PreferenceHandler.getUserData();
     return token != null && token.isNotEmpty && user != null;
   }
 
-  // Convenience getter to get current user data
-  Future<User?> get currentUser async {
+  Future<app_models.User?> get currentUser async {
     return await PreferenceHandler.getUserData();
   }
 
-  // ... (rest of your API calls remain the same) ...
-  Future<ApiResponse<List<Product>>> getProducts({
+  // --- Product API Calls ---
+  Future<app_models.ApiResponse<List<app_models.Product>>> getProducts({
     int? categoryId,
     int? brandId,
   }) async {
@@ -220,248 +274,402 @@ class ApiProvider {
     final uri = Uri.parse(
       '$_baseUrl/products',
     ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null);
-    final headers = await _getHeaders();
-    final response = await http.get(uri, headers: headers);
-    return _handleResponse<List<Product>>(
-      response,
-      (json) =>
-          (json as List)
-              .map((i) => Product.fromJson(i as Map<String, dynamic>))
-              .toList(),
-    );
-  }
-
-  Future<ApiResponse<Product>> addProduct({
-    required String name,
-    required String description,
-    required int price,
-    required int stock,
-    int? categoryId,
-    int? brandId,
-    double? discount,
-    List<String>? images,
-  }) async {
-    final url = Uri.parse('$_baseUrl/products');
-    final headers = await _getHeaders();
-    final body = json.encode({
-      'name': name,
-      'description': description,
-      'price': price,
-      'stock': stock,
-      'category_id': categoryId,
-      'brand_id': brandId,
-      'discount': discount,
-      'images': images,
-    });
-
-    final response = await http.post(url, headers: headers, body: body);
-    return _handleResponse<Product>(response, (json) => Product.fromJson(json));
-  }
-
-  Future<ApiResponse<Product>> updateProduct({
-    required int productId,
-    required String name,
-    required String description,
-    required int price,
-    required int stock,
-    int? categoryId,
-    int? brandId,
-    double? discount,
-    List<String>? images,
-  }) async {
-    final url = Uri.parse('$_baseUrl/products/$productId');
-    final headers = await _getHeaders();
-    final body = json.encode({
-      'name': name,
-      'description': description,
-      'price': price,
-      'stock': stock,
-      'category_id': categoryId,
-      'brand_id': brandId,
-      'discount': discount,
-      'images': images,
-    });
-
-    final response = await http.put(url, headers: headers, body: body);
-    return _handleResponse<Product>(response, (json) => Product.fromJson(json));
-  }
-
-  Future<ApiResponse<void>> deleteProduct({required int productId}) async {
-    final url = Uri.parse('$_baseUrl/products/$productId');
-    final headers = await _getHeaders();
-    final response = await http.delete(url, headers: headers);
-    return _handleResponseNoData(response);
-  }
-
-  // -----------------------------------------------------------------------------
-  // Brand API Calls
-  // -----------------------------------------------------------------------------
-
-  Future<ApiResponse<List<Brand>>> getBrands() async {
-    final url = Uri.parse('$_baseUrl/brands'); // Correct URL
+    debugPrint('Fetching products from: $uri');
     try {
-      final headers = await _getHeaders(); // Get headers for authentication
-      final response = await http.get(url, headers: headers); // Use http.get
-      return _handleResponse<List<Brand>>(
+      final headers = await _getHeaders();
+      final response = await http.get(uri, headers: headers);
+      return _handleResponse<List<app_models.Product>>(
         response,
         (json) =>
             (json as List)
-                .map((i) => Brand.fromJson(i as Map<String, dynamic>))
+                .map(
+                  (i) => app_models.Product.fromJson(i as Map<String, dynamic>),
+                )
                 .toList(),
       );
     } catch (e) {
-      // Catch and rethrow, or wrap in ApiResponse.errorx
-      // Based on your existing _handleResponse, throwing an Exception is consistent
-      debugPrint('Error in getBrands: $e');
-      throw Exception('Failed to fetch brands: ${e.toString()}');
+      debugPrint('Error in getProducts: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to fetch products: ${e.toString()}',
+      );
     }
   }
 
-  Future<ApiResponse<Brand>> addBrand({required String name}) async {
-    final url = Uri.parse('$_baseUrl/brands');
-    final headers = await _getHeaders();
-    final body = json.encode({'name': name});
-    final response = await http.post(url, headers: headers, body: body);
-    return _handleResponse<Brand>(response, (json) => Brand.fromJson(json));
+  Future<app_models.ApiResponse<app_models.Product>> addProduct({
+    required String name,
+    required int price,
+    required int stock,
+    required int brandId,
+    String? description,
+    List<String>? images, // Base64 encoded images
+    double? discount,
+  }) async {
+    final url = Uri.parse('$_baseUrl/products');
+    debugPrint('Adding product: $name');
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({
+        'name': name,
+        'price': price,
+        'stock': stock,
+        'brand_id': brandId,
+        'description': description,
+        'images': images, // Send as list of base64 strings
+        'discount': discount,
+      });
+      debugPrint('Request Body: $body');
+      final response = await http.post(url, headers: headers, body: body);
+      return _handleResponse<app_models.Product>(
+        response,
+        (json) => app_models.Product.fromJson(json as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('Error in addProduct: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to add product: ${e.toString()}',
+      );
+    }
   }
 
-  Future<ApiResponse<Brand>> updateBrand({
+  Future<app_models.ApiResponse<app_models.Product>> updateProduct({
+    required int productId,
+    required String name,
+    required int price,
+    required int stock,
+    required int brandId,
+    String? description,
+    List<String>? images, // Base64 encoded images or existing URLs
+    double? discount,
+  }) async {
+    final url = Uri.parse('$_baseUrl/products/$productId');
+    debugPrint('Updating product ID: $productId, Name: $name');
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({
+        'name': name,
+        'price': price,
+        'stock': stock,
+        'brand_id': brandId,
+        'description': description,
+        'images': images,
+        'discount': discount,
+      });
+      debugPrint('Request Body: $body');
+      final response = await http.put(url, headers: headers, body: body);
+      return _handleResponse<app_models.Product>(
+        response,
+        (json) => app_models.Product.fromJson(json as Map<String, dynamic>),
+      );
+    } catch (e) {
+      debugPrint('Error in updateProduct: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to update product: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<app_models.ApiResponse<void>> deleteProduct({
+    required int productId,
+  }) async {
+    final url = Uri.parse('$_baseUrl/products/$productId');
+    debugPrint('Deleting product ID: $productId');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers);
+      return _handleResponseNoData(response);
+    } catch (e) {
+      debugPrint('Error in deleteProduct: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to delete product: ${e.toString()}',
+      );
+    }
+  }
+
+  // --- Brand API Calls ---
+  Future<app_models.ApiResponse<List<app_models.Brand>>> getBrands() async {
+    final url = Uri.parse('$_baseUrl/brands'); // Correct URL
+    debugPrint('Fetching brands from: $url');
+    try {
+      final headers = await _getHeaders(); // Get headers for authentication
+      final response = await http.get(url, headers: headers); // Use http.get
+      return _handleResponse<List<app_models.Brand>>(
+        response,
+        (json) =>
+            (json as List)
+                .map(
+                  (i) => app_models.Brand.fromJson(i as Map<String, dynamic>),
+                )
+                .toList(),
+      );
+    } catch (e) {
+      debugPrint('Error in getBrands: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to fetch brands: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<app_models.ApiResponse<app_models.Brand>> addBrand({
+    required String name,
+  }) async {
+    final url = Uri.parse('$_baseUrl/brands');
+    debugPrint('Adding brand: $name');
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({'name': name});
+      debugPrint('Request Body: $body');
+      final response = await http.post(url, headers: headers, body: body);
+      return _handleResponse<app_models.Brand>(
+        response,
+        (json) => app_models.Brand.fromJson(json),
+      );
+    } catch (e) {
+      debugPrint('Error in addBrand: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to add brand: ${e.toString()}',
+      );
+    }
+  }
+
+  Future<app_models.ApiResponse<app_models.Brand>> updateBrand({
     required int brandId,
     required String name,
   }) async {
     final url = Uri.parse('$_baseUrl/brands/$brandId');
-    final headers = await _getHeaders();
-    final body = json.encode({'name': name});
-    final response = await http.put(url, headers: headers, body: body);
-    return _handleResponse<Brand>(response, (json) => Brand.fromJson(json));
+    debugPrint('Updating brand ID: $brandId, Name: $name');
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({'name': name});
+      debugPrint('Request Body: $body');
+      final response = await http.put(url, headers: headers, body: body);
+      return _handleResponse<app_models.Brand>(
+        response,
+        (json) => app_models.Brand.fromJson(json),
+      );
+    } catch (e) {
+      debugPrint('Error in updateBrand: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to update brand: ${e.toString()}',
+      );
+    }
   }
 
-  Future<ApiResponse<void>> deleteBrand({required int brandId}) async {
+  Future<app_models.ApiResponse<void>> deleteBrand({
+    required int brandId,
+  }) async {
     final url = Uri.parse('$_baseUrl/brands/$brandId');
-    final headers = await _getHeaders();
-    final response = await http.delete(url, headers: headers);
-    return _handleResponseNoData(response);
+    debugPrint('Deleting brand ID: $brandId');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers);
+      return _handleResponseNoData(response);
+    } catch (e) {
+      debugPrint('Error in deleteBrand: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to delete brand: ${e.toString()}',
+      );
+    }
   }
 
-  // -----------------------------------------------------------------------------
-  // Category API Calls
-  // -----------------------------------------------------------------------------
-
-  Future<ApiResponse<List<Category>>> getCategories() async {
+  // --- Category API Calls ---
+  Future<app_models.ApiResponse<List<app_models.Category>>>
+  getCategories() async {
     final url = Uri.parse('$_baseUrl/categories');
-    final headers = await _getHeaders();
-    final response = await http.get(url, headers: headers);
-    return _handleResponse<List<Category>>(
-      response,
-      (json) =>
-          (json as List)
-              .map((i) => Category.fromJson(i as Map<String, dynamic>))
-              .toList(),
-    );
+    debugPrint('Fetching categories from: $url');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      return _handleResponse<List<app_models.Category>>(
+        response,
+        (json) =>
+            (json as List)
+                .map(
+                  (i) =>
+                      app_models.Category.fromJson(i as Map<String, dynamic>),
+                )
+                .toList(),
+      );
+    } catch (e) {
+      debugPrint('Error in getCategories: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to fetch categories: ${e.toString()}',
+      );
+    }
   }
 
-  Future<ApiResponse<Category>> addCategory({required String name}) async {
+  Future<app_models.ApiResponse<app_models.Category>> addCategory({
+    required String name,
+  }) async {
     final url = Uri.parse('$_baseUrl/categories');
-    final headers = await _getHeaders();
-    final body = json.encode({'name': name});
-    final response = await http.post(url, headers: headers, body: body);
-    return _handleResponse<Category>(
-      response,
-      (json) => Category.fromJson(json),
-    );
+    debugPrint('Adding category: $name');
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({'name': name});
+      debugPrint('Request Body: $body');
+      final response = await http.post(url, headers: headers, body: body);
+      return _handleResponse<app_models.Category>(
+        response,
+        (json) => app_models.Category.fromJson(json),
+      );
+    } catch (e) {
+      debugPrint('Error in addCategory: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to add category: ${e.toString()}',
+      );
+    }
   }
 
-  Future<ApiResponse<Category>> updateCategory({
+  Future<app_models.ApiResponse<app_models.Category>> updateCategory({
     required int categoryId,
     required String name,
   }) async {
     final url = Uri.parse('$_baseUrl/categories/$categoryId');
-    final headers = await _getHeaders();
-    final body = json.encode({'name': name});
-    final response = await http.put(url, headers: headers, body: body);
-    return _handleResponse<Category>(
-      response,
-      (json) => Category.fromJson(json),
-    );
+    debugPrint('Updating category ID: $categoryId, Name: $name');
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({'name': name});
+      debugPrint('Request Body: $body');
+      final response = await http.put(url, headers: headers, body: body);
+      return _handleResponse<app_models.Category>(
+        response,
+        (json) => app_models.Category.fromJson(json),
+      );
+    } catch (e) {
+      debugPrint('Error in updateCategory: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to update category: ${e.toString()}',
+      );
+    }
   }
 
-  Future<ApiResponse<void>> deleteCategory({required int categoryId}) async {
+  Future<app_models.ApiResponse<void>> deleteCategory({
+    required int categoryId,
+  }) async {
     final url = Uri.parse('$_baseUrl/categories/$categoryId');
-    final headers = await _getHeaders();
-    final response = await http.delete(url, headers: headers);
-    return _handleResponseNoData(response);
+    debugPrint('Deleting category ID: $categoryId');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers);
+      return _handleResponseNoData(response);
+    } catch (e) {
+      debugPrint('Error in deleteCategory: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to delete category: ${e.toString()}',
+      );
+    }
   }
 
-  // -----------------------------------------------------------------------------
-  // Cart API Calls
-  // -----------------------------------------------------------------------------
-
-  Future<ApiResponse<List<CartItem>>> getCart() async {
+  // --- Cart API Calls ---
+  Future<app_models.ApiResponse<List<app_models.CartItem>>> getCart() async {
     final url = Uri.parse('$_baseUrl/cart');
-    final headers = await _getHeaders();
-    final response = await http.get(url, headers: headers);
-    return _handleResponse<List<CartItem>>(
-      response,
-      (json) =>
-          (json as List)
-              .map((i) => CartItem.fromJson(i as Map<String, dynamic>))
-              .toList(),
-    );
+    debugPrint('Fetching cart items...');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      return _handleResponse<List<app_models.CartItem>>(
+        response,
+        (json) =>
+            (json as List)
+                .map(
+                  (i) =>
+                      app_models.CartItem.fromJson(i as Map<String, dynamic>),
+                )
+                .toList(),
+      );
+    } catch (e) {
+      debugPrint('Error in getCart: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to fetch cart: ${e.toString()}',
+      );
+    }
   }
 
-  Future<ApiResponse<CartItem>> addToCart({
+  Future<app_models.ApiResponse<app_models.CartItem>> addToCart({
     required int productId,
     required int quantity,
   }) async {
     final url = Uri.parse('$_baseUrl/cart');
-    final headers = await _getHeaders();
-    final body = json.encode({'product_id': productId, 'quantity': quantity});
-    final response = await http.post(url, headers: headers, body: body);
-    return _handleResponse<CartItem>(
-      response,
-      (json) => CartItem.fromJson(json),
-    );
+    debugPrint('Adding to cart: Product ID $productId, Quantity $quantity');
+    try {
+      final headers = await _getHeaders();
+      final body = json.encode({'product_id': productId, 'quantity': quantity});
+      debugPrint('Request Body: $body');
+      final response = await http.post(url, headers: headers, body: body);
+      return _handleResponse<app_models.CartItem>(
+        response,
+        (json) => app_models.CartItem.fromJson(json),
+      );
+    } catch (e) {
+      debugPrint('Error in addToCart: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to add to cart: ${e.toString()}',
+      );
+    }
   }
 
-  Future<ApiResponse<void>> deleteCartItem({required int cartItemId}) async {
+  Future<app_models.ApiResponse<void>> deleteCartItem({
+    required int cartItemId,
+  }) async {
     final url = Uri.parse('$_baseUrl/cart/$cartItemId');
-    final headers = await _getHeaders();
-    final response = await http.delete(url, headers: headers);
-    return _handleResponseNoData(response);
+    debugPrint('Deleting cart item ID: $cartItemId');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(url, headers: headers);
+      return _handleResponseNoData(response);
+    } catch (e) {
+      debugPrint('Error in deleteCartItem: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to delete cart item: ${e.toString()}',
+      );
+    }
   }
 
-  // -----------------------------------------------------------------------------
-  // Checkout API Calls
-  // -----------------------------------------------------------------------------
-
-  Future<ApiResponse<CheckoutResponseData>> checkout() async {
+  // --- Checkout API Calls ---
+  Future<app_models.ApiResponse<app_models.CheckoutResponseData>>
+  checkout() async {
     final url = Uri.parse('$_baseUrl/checkout');
-    final headers = await _getHeaders();
-    final response = await http.post(
-      url,
-      headers: headers,
-      body: json.encode({}),
-    );
-    return _handleResponse<CheckoutResponseData>(
-      response,
-      (json) => CheckoutResponseData.fromJson(json),
-    );
+    debugPrint('Proceeding to checkout...');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.post(
+        url,
+        headers: headers,
+        body: json.encode({}), // Empty body for a simple checkout trigger
+      );
+      return _handleResponse<app_models.CheckoutResponseData>(
+        response,
+        (json) => app_models.CheckoutResponseData.fromJson(json),
+      );
+    } catch (e) {
+      debugPrint('Error in checkout: $e');
+      return app_models.ApiResponse.error(
+        error: 'Checkout failed: ${e.toString()}',
+      );
+    }
   }
 
-  // -----------------------------------------------------------------------------
-  // History API Calls (Menggunakan model History dari app_models.dart)
-  // -----------------------------------------------------------------------------
-
-  Future<ApiResponse<List<History>>> getPurchaseHistory() async {
+  // --- History API Calls ---
+  Future<app_models.ApiResponse<List<app_models.History>>>
+  getPurchaseHistory() async {
     final url = Uri.parse('$_baseUrl/history');
-    final headers = await _getHeaders();
-    final response = await http.get(url, headers: headers);
-    return _handleResponse<List<History>>(
-      response,
-      (json) =>
-          (json as List)
-              .map((i) => History.fromJson(i as Map<String, dynamic>))
-              .toList(),
-    );
+    debugPrint('Fetching purchase history...');
+    try {
+      final headers = await _getHeaders();
+      final response = await http.get(url, headers: headers);
+      return _handleResponse<List<app_models.History>>(
+        response,
+        (json) =>
+            (json as List)
+                .map(
+                  (i) => app_models.History.fromJson(i as Map<String, dynamic>),
+                )
+                .toList(),
+      );
+    } catch (e) {
+      debugPrint('Error in getPurchaseHistory: $e');
+      return app_models.ApiResponse.error(
+        error: 'Failed to fetch purchase history: ${e.toString()}',
+      );
+    }
   }
 }
