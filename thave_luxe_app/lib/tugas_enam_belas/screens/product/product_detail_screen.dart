@@ -248,7 +248,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         SnackBar(
           content: Text(
             'Adding $_selectedQuantityToAdd would exceed total stock. Only $_availableStock in stock. Your cart currently has $_currentProductInCartQuantity of this item.',
-            style: GoogleFonts.montserrat(color: AppColors.lightText),
+            style: GoogleFonts.montserrat(
+              color: const Color.fromARGB(255, 185, 185, 185),
+            ),
           ),
           backgroundColor: AppColors.errorRed,
         ),
@@ -397,7 +399,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor:
-              onPressed != null ? AppColors.primaryGold : AppColors.subtleGrey,
+              onPressed != null ? const Color(0xffCFAF6B) : Color(0xffCFAF6B),
           foregroundColor: AppColors.darkBackground,
           minimumSize: const Size(40, 40),
           padding: EdgeInsets.zero,
@@ -415,7 +417,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
+        icon: const Icon(
+          Icons.arrow_back_ios,
+          color: Color.fromARGB(255, 14, 13, 13),
+        ),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -424,7 +429,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         IconButton(
           icon: const Icon(
             Icons.shopping_cart_outlined,
-            color: AppColors.lightText,
+            color: Color.fromARGB(255, 0, 0, 0),
           ),
           onPressed: () async {
             final User? user = await PreferenceHandler.getUserData();
@@ -539,15 +544,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     }
 
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: Color(0xFFF0EAD6),
       appBar: _buildAppBar(context),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppColors.darkBackground,
-              AppColors.backgroundGradientLight,
-            ],
+            colors: [Color(0xFFFFFFFF), Color(0xFFF0EAD6)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -578,8 +580,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                             errorBuilder:
                                 (context, error, stackTrace) => Container(
                                   height: 300,
-                                  color: AppColors.cardBackgroundDark
-                                      .withOpacity(0.5),
+                                  color: const Color.fromARGB(
+                                    255,
+                                    201,
+                                    196,
+                                    196,
+                                  ).withOpacity(0.5),
                                   child: const Center(
                                     child: Icon(
                                       Icons.broken_image,
@@ -599,36 +605,39 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       left: 0,
                       right: 0,
                       child: Center(
-                        child: TabPageSelector(
-                          controller: _tabController,
-                          selectedColor: AppColors.primaryGold,
-                          color: AppColors.subtleGrey,
+                        child: SizedBox(
+                          height: 20,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: List.generate(
+                              _imageUrls.length > 3
+                                  ? 3
+                                  : _imageUrls.length, // Maksimal 3 titik
+                              (index) => Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                width: 10,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color:
+                                      _tabController.index == index
+                                          ? AppColors.primaryGold
+                                          : const Color.fromARGB(
+                                            255,
+                                            209,
+                                            209,
+                                            209,
+                                          ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  Positioned(
-                    top: 20,
-                    right: 20,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.cardBackgroundDark.withOpacity(0.8),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.3),
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.favorite_border,
-                        color: AppColors.subtleText,
-                        size: 24,
-                      ),
-                    ),
-                  ),
                 ],
               ),
               Padding(
@@ -640,7 +649,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       '$_productBrandDisplay · $category',
                       style: GoogleFonts.montserrat(
                         fontSize: 16,
-                        color: AppColors.subtleText,
+                        color: Color(0xff2C2C2C),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -650,7 +659,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.lightText,
+                        color: Color(0xff2C2C2C),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -671,7 +680,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       _productDescription,
                       style: GoogleFonts.montserrat(
                         fontSize: 15,
-                        color: AppColors.lightText,
+                        color: const Color(0xff666666),
                         height: 1.5,
                       ),
                     ),
@@ -681,7 +690,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.lightText,
+                        color: const Color(0xFF3A3A3A),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -694,8 +703,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               canAddToCart
-                                  ? AppColors.primaryGold
-                                  : AppColors.subtleGrey,
+                                  ? const Color(0xffCFAF6B)
+                                  : Color(0xffD4AF37),
                           foregroundColor: AppColors.darkBackground,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(

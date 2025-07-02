@@ -136,15 +136,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: Color(0xffFFFDF8),
       appBar: _buildAppBar(context),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [
-              AppColors.darkBackground,
-              AppColors.backgroundGradientLight,
-            ],
+            colors: [Color(0xffFFFDF8), Color(0xffFFFDF8)],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -225,7 +222,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.cardBackgroundDark,
+        color: Color(0xffF5F2EB),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.subtleGrey),
         boxShadow: [
@@ -251,7 +248,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ),
               style: GoogleFonts.montserrat(
                 fontSize: 16,
-                color: AppColors.lightText,
+                color: const Color.fromARGB(255, 58, 58, 58),
               ),
             ),
           ),
@@ -407,8 +404,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   category.name ?? 'Unknown Category',
                   style: GoogleFonts.montserrat(
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.lightText,
+                    fontWeight: FontWeight.w500,
+                    color: const Color.fromARGB(255, 49, 49, 49),
                   ),
                 ),
                 subtitle: Text(

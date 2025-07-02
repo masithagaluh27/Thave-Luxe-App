@@ -361,7 +361,9 @@ class _HomeScreen16State extends State<HomeScreen16> {
 
   Widget _productCard(Product p) => SizedBox(
     width: 160,
+
     child: Card(
+      color: Color(0xffF2F2F2), // Light background for the card
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         onTap:

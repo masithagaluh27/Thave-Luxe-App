@@ -1,5 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Import model tunggal User
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
 
 class PreferenceHandler {
   static const String _tokenKey = 'auth_token';
@@ -7,7 +7,6 @@ class PreferenceHandler {
   static const String _userEmailKey = 'user_email';
   static const String _userIdKey = 'user_id';
 
-  // --- Token Management ---
   static Future<void> setToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_tokenKey, token);
@@ -23,10 +22,6 @@ class PreferenceHandler {
     await prefs.remove(_tokenKey);
   }
 
-  // --- User Data Management (using the consolidated User model) ---
-
-  /// Sets user data (name, email, id) into SharedPreferences.
-  /// This should be called after successful login or registration.
   static Future<void> setUserData(User user) async {
     final prefs = await SharedPreferences.getInstance();
     if (user.id != null) {
@@ -38,10 +33,8 @@ class PreferenceHandler {
     if (user.email != null) {
       await prefs.setString(_userEmailKey, user.email!);
     }
-    // No need to set token here, setToken() method handles it.
   }
 
-  /// Retrieves a User object from SharedPreferences.
   static Future<User?> getUserData() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -49,7 +42,6 @@ class PreferenceHandler {
     final name = prefs.getString(_userNameKey);
     final email = prefs.getString(_userEmailKey);
 
-    // If any core user data is missing, return null (user not fully logged in/saved)
     if (id == null || name == null || email == null) {
       return null;
     }
@@ -57,15 +49,13 @@ class PreferenceHandler {
     return User(id: id, name: name, email: email);
   }
 
-  /// Clears only user-specific details (name, email, id) from sSharedPreferences.
   static Future<void> clearUserDetails() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_userNameKey);
     await prefs.remove(_userEmailKey);
-    await prefs.remove(_userIdKey); // Also clear user ID
+    await prefs.remove(_userIdKey);
   }
 
-  /// Clears all stored preferences (token and user details).
   static Future<void> clearAllPreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();

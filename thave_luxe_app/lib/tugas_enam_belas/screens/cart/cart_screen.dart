@@ -549,7 +549,7 @@ class _CartScreen16State extends State<CartScreen16> {
                 'Grand Total:',
                 style: GoogleFonts.playfairDisplay(
                   color: AppColors.textDark, // Changed to dark text
-                  fontSize: 24,
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -557,7 +557,7 @@ class _CartScreen16State extends State<CartScreen16> {
                 _currencyFormatter.format(_calculateTotalPrice()),
                 style: GoogleFonts.playfairDisplay(
                   color: AppColors.primaryGold, // Gold accent for total
-                  fontSize: 30,
+                  fontSize: 25,
                   fontWeight: FontWeight.bold,
                 ),
               ),
