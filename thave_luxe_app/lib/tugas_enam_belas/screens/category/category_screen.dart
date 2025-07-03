@@ -136,24 +136,14 @@ class _CategoryScreenState extends State<CategoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
       appBar: _buildAppBar(context),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: RefreshIndicator(
-          // Tambahkan RefreshIndicator
-          onRefresh: _fetchInitialData,
-          color: AppColors.primaryGold,
+      body: RefreshIndicator(
+        onRefresh: _fetchInitialData,
+        color: AppColors.primaryGold,
+        child: Container(
+          color: AppColors.backgroundLight, // ✅ Set background color here
           child: SingleChildScrollView(
-            // Bungkus dengan SingleChildScrollView
-            physics:
-                const AlwaysScrollableScrollPhysics(), // Selalu bisa di-scroll, bahkan jika kontennya kecil
+            physics: const AlwaysScrollableScrollPhysics(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -165,10 +155,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   child: _buildSearchBar(),
                 ),
                 const SizedBox(height: 20),
-
                 _buildSectionHeader('All Categories', null),
                 const SizedBox(height: 15),
-
                 _buildCategoryList(),
                 const SizedBox(height: 20),
               ],
@@ -181,15 +169,20 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: AppColors.backgroundLight,
       elevation: 0,
       title: Text(
         'Categories',
         style: GoogleFonts.playfairDisplay(
-          color: AppColors.lightText,
+          color: AppColors.darkBackground,
           fontSize: 20,
           fontWeight: FontWeight.bold,
         ),
+      ),
+
+      leading: IconButton(
+        onPressed: () => Navigator.pop(context),
+        icon: Icon(Icons.arrow_back_ios, color: AppColors.primaryGold),
       ),
       centerTitle: true,
       actions: <Widget>[
@@ -222,7 +215,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.cardBackgroundDark,
+        color: Color(0xffF5F2EB),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.subtleGrey),
         boxShadow: [
@@ -248,7 +241,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               ),
               style: GoogleFonts.montserrat(
                 fontSize: 16,
-                color: AppColors.lightText,
+                color: const Color.fromARGB(255, 58, 58, 58),
               ),
             ),
           ),
@@ -287,7 +280,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             style: GoogleFonts.playfairDisplay(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: AppColors.lightText,
+              color: AppColors.darkBackground,
             ),
           ),
           if (onSeeAllTap != null)
@@ -404,8 +397,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   category.name ?? 'Unknown Category',
                   style: GoogleFonts.montserrat(
                     fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.lightText,
+                    fontWeight: FontWeight.w500,
+                    color: const Color.fromARGB(255, 49, 49, 49),
                   ),
                 ),
                 subtitle: Text(
@@ -417,7 +410,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 ),
                 trailing: const Icon(
                   Icons.arrow_forward_ios,
-                  color: AppColors.subtleGrey,
+                  color: AppColors.primaryGold,
                   size: 20,
                 ),
                 onTap: () {

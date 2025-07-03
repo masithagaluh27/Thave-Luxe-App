@@ -33,42 +33,71 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       initialRoute: SplashScreen16.id,
       routes: {
-        // Welcome & Auth Routes
         SplashScreen16.id: (context) => const SplashScreen16(),
         WelcomeScreen16.id: (context) => const WelcomeScreen16(),
         LoginScreen16.id: (context) => const LoginScreen16(),
         RegisterScreen16.id: (context) => const RegisterScreen16(),
 
-        // Main App Routes
         HomeScreen16.id: (context) => const HomeScreen16(),
         ProfileScreen16.id: (context) => const ProfileScreen16(),
         CartScreen16.id: (context) => const CartScreen16(),
         CheckoutScreen16.id: (context) => const CheckoutScreen16(),
         HistoryScreen.id: (context) => const HistoryScreen(),
 
-        // Category Routes
         CategoryScreen.id: (context) => const CategoryScreen(),
+
         CategoryDetailScreen.id: (context) {
           final args =
-              ModalRoute.of(context)!.settings.arguments
-                  as Map<String, dynamic>;
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
+
+          if (args == null ||
+              args['categoryId'] == null ||
+              args['categoryName'] == null) {
+            return const Scaffold(
+              body: Center(child: Text('Category data missing')),
+            );
+          }
+
           return CategoryDetailScreen(
             categoryId: args['categoryId'],
             categoryName: args['categoryName'],
           );
         },
 
-        // Admin Routes
-        // AdminDashboardScreen16.id: (context) => const AdminDashboardScreen16(),
-        // ViewOrdersScreen16.id: (context) => const ViewOrdersScreen16(),
-        ManageProductsScreen16.id: (context) => const ManageProductsScreen16(),
+        ManageProductScreen.id: (context) {
+          final brandId = ModalRoute.of(context)?.settings.arguments as String?;
+          if (brandId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Brand ID tidak ditemukan')),
+            );
+          }
+          return ManageProductScreen();
+        },
 
-        // Brand Routes
-        BrandScreen16.id: (context) => const BrandScreen16(),
+        BrandScreen16.id: (ctx) {
+          final brandId = ModalRoute.of(ctx)?.settings.arguments as String?;
+          if (brandId == null) {
+            return const Scaffold(
+              body: Center(child: Text('Brand ID is missing')),
+            );
+          }
+          return BrandScreen16(brandId: int.tryParse(brandId));
+        },
+
         BrandDetailScreen16.id: (context) {
           final args =
-              ModalRoute.of(context)!.settings.arguments
-                  as Map<String, dynamic>;
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
+
+          if (args == null ||
+              args['brandId'] == null ||
+              args['brandName'] == null) {
+            return const Scaffold(
+              body: Center(child: Text('Brand data missing')),
+            );
+          }
+
           return BrandDetailScreen16(
             brandId: args['brandId'],
             brandName: args['brandName'],

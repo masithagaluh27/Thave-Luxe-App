@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Menggunakan model tunggal untuk semua model, termasuk checkout
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/cart/checkout_detail_screen.dart';
 
 class CartScreen16 extends StatefulWidget {
@@ -74,7 +74,9 @@ class _CartScreen16State extends State<CartScreen16> {
         SnackBar(
           content: Text(
             message,
-            style: GoogleFonts.montserrat(color: AppColors.lightText),
+            style: GoogleFonts.montserrat(
+              color: AppColors.textLight,
+            ), // Adjusted for light background snackbar
           ),
           backgroundColor: color,
           duration: const Duration(seconds: 2),
@@ -205,7 +207,6 @@ class _CartScreen16State extends State<CartScreen16> {
     );
 
     try {
-      // Menggunakan CheckoutResponseData dari app_models.dart
       final ApiResponse<CheckoutResponseData> response =
           await _apiService.checkout();
       _showSnackBar(
@@ -238,20 +239,24 @@ class _CartScreen16State extends State<CartScreen16> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: AppColors.backgroundLight, // Changed to light background
       appBar: AppBar(
         title: Text(
           'Your Cart',
           style: GoogleFonts.playfairDisplay(
             fontWeight: FontWeight.bold,
-            color: AppColors.lightText,
+            color: AppColors.textDark, // Changed to dark text
           ),
         ),
         centerTitle: true,
-        backgroundColor: AppColors.darkBackground,
+        backgroundColor:
+            Colors.transparent, // Transparent to show body gradient
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
+          icon: const Icon(
+            Icons.arrow_back_ios,
+            color: AppColors.primaryGold,
+          ), // Changed to dark icon
           onPressed: () {
             Navigator.pop(context);
           },
@@ -260,7 +265,11 @@ class _CartScreen16State extends State<CartScreen16> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
+            // Updated gradient for light background
+            colors: [
+              AppColors.backgroundLight,
+              AppColors.backgroundGradientLight,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -297,7 +306,9 @@ class _CartScreen16State extends State<CartScreen16> {
                                 onPressed: _fetchCartItems,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryGold,
-                                  foregroundColor: AppColors.darkBackground,
+                                  foregroundColor:
+                                      AppColors
+                                          .textLight, // Adjusted for light background
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -320,7 +331,9 @@ class _CartScreen16State extends State<CartScreen16> {
                           child: Text(
                             'Your cart is empty. Start adding some luxury items!',
                             style: GoogleFonts.playfairDisplay(
-                              color: AppColors.subtleGrey,
+                              color:
+                                  AppColors
+                                      .subtleText, // Changed for light theme
                               fontSize: 18,
                             ),
                             textAlign: TextAlign.center,
@@ -353,7 +366,7 @@ class _CartScreen16State extends State<CartScreen16> {
         item.quantity == null) {
       return Card(
         elevation: 5,
-        color: AppColors.cardBackgroundLight,
+        color: AppColors.cardBackground, // Changed to light card background
         margin: const EdgeInsets.symmetric(vertical: 8.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
@@ -373,7 +386,7 @@ class _CartScreen16State extends State<CartScreen16> {
 
     return Card(
       elevation: 5,
-      color: AppColors.cardBackgroundLight,
+      color: AppColors.cardBackground, // Changed to light card background
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -424,7 +437,7 @@ class _CartScreen16State extends State<CartScreen16> {
                   Text(
                     item.product!.name!,
                     style: GoogleFonts.playfairDisplay(
-                      color: AppColors.textDark,
+                      color: AppColors.textDark, // Dark text on light card
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -435,7 +448,7 @@ class _CartScreen16State extends State<CartScreen16> {
                   Text(
                     'Price: ${_currencyFormatter.format(item.product!.price!.toDouble())}',
                     style: GoogleFonts.montserrat(
-                      color: AppColors.subtleText,
+                      color: AppColors.subtleText, // Subtle dark text
                       fontSize: 14,
                     ),
                   ),
@@ -451,7 +464,7 @@ class _CartScreen16State extends State<CartScreen16> {
                         child: Text(
                           item.quantity.toString(),
                           style: GoogleFonts.montserrat(
-                            color: AppColors.textDark,
+                            color: AppColors.textDark, // Dark text
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -515,14 +528,14 @@ class _CartScreen16State extends State<CartScreen16> {
     return Container(
       padding: const EdgeInsets.all(25.0),
       decoration: BoxDecoration(
-        color: AppColors.darkBackground,
+        color: AppColors.cardBackground, // Changed to light card background
         borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.5),
-            spreadRadius: 5,
-            blurRadius: 20,
-            offset: const Offset(0, -8),
+            color: Colors.black.withOpacity(0.1), // More subtle shadow
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: const Offset(0, -5), // Adjusted offset
           ),
         ],
       ),
@@ -535,16 +548,16 @@ class _CartScreen16State extends State<CartScreen16> {
               Text(
                 'Grand Total:',
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.lightText,
-                  fontSize: 24,
+                  color: AppColors.textDark, // Changed to dark text
+                  fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Text(
                 _currencyFormatter.format(_calculateTotalPrice()),
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.primaryGold,
-                  fontSize: 30,
+                  color: AppColors.primaryGold, // Gold accent for total
+                  fontSize: 25,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -557,7 +570,8 @@ class _CartScreen16State extends State<CartScreen16> {
               onPressed: _checkout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGold,
-                foregroundColor: AppColors.darkBackground,
+                foregroundColor:
+                    AppColors.textLight, // Adjusted for light theme contrast
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),

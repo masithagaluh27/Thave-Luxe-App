@@ -78,7 +78,7 @@ class _WelcomeScreen16State extends State<WelcomeScreen16> {
                       fontSize: 36,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 3,
-                      color: Colors.amber.shade200,
+                      color: const Color(0xFFFFFFFF),
                       shadows: [
                         Shadow(
                           color: Colors.amber.shade100.withOpacity(0.8),

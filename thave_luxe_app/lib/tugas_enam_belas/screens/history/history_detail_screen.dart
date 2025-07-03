@@ -347,7 +347,10 @@ class HistoryDetailScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: AppColors.textDark),
+        icon: const Icon(
+          Icons.arrow_back_ios,
+          color: Color.fromARGB(255, 255, 251, 251),
+        ),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -375,7 +378,7 @@ class HistoryDetailScreen extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.cardBackgroundLight,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.subtleGrey.withOpacity(0.5)),
           boxShadow: [
@@ -422,7 +425,7 @@ class HistoryDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.cardBackgroundLight,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
@@ -488,7 +491,7 @@ class HistoryDetailScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: AppColors.cardBackgroundLight,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(

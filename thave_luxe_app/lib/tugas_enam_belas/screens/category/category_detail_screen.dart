@@ -80,7 +80,10 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
+            colors: [
+              AppColors.darkBackground,
+              AppColors.backgroundGradientLight,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),

@@ -170,7 +170,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       centerTitle: true,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: AppColors.textDark),
+        icon: const Icon(
+          Icons.arrow_back_ios,
+          color: Color.fromARGB(255, 228, 228, 228),
+        ),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -207,7 +210,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 15),
         decoration: BoxDecoration(
-          color: AppColors.cardBackgroundLight,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(15.0),
           boxShadow: [
             BoxShadow(
@@ -271,54 +274,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     itemPrice * quantity,
                   );
 
-                  // String imageUrlToDisplay = '';
-                  // // Check if imageUrls is not null and not empty from HistoryProduct
-                  // if (item.product?.imageUrls != null &&
-                  //     item.product!.imageUrls!.isNotEmpty) {
-                  //   final firstImageUrl = item.product!.imageUrls!.first;
-                  //   // Prepend base URL only if it's not already a full URL
-                  //   imageUrlToDisplay =
-                  //       firstImageUrl.startsWith('http')
-                  //           ? firstImageUrl
-                  //           : '${ApiProvider._baseUrl}/images/$firstImageUrl'; // Sesuaikan '/images/' jika perlu
-                  // } else {
-                  //   imageUrlToDisplay =
-                  //       'https://placehold.co/50x50/FFC0CB/000000?text=P'; // Default placeholder
-                  // }
-
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 5.0),
                     child: Row(
                       children: [
-                        // Item Image
-                        // Container(
-                        //   width: 50,
-                        //   height: 50,
-                        //   decoration: BoxDecoration(
-                        //     borderRadius: BorderRadius.circular(10),
-                        //     color: AppColors.subtleGrey.withOpacity(0.3),
-                        //   ),
-                        //   child: ClipRRect(
-                        //     borderRadius: BorderRadius.circular(10),
-                        //     child: Image.network(
-                        //       imageUrlToDisplay,
-                        //       fit: BoxFit.cover,
-                        //       errorBuilder:
-                        //           (context, error, stackTrace) => Container(
-                        //             color: AppColors.subtleGrey.withOpacity(
-                        //               0.2,
-                        //             ),
-                        //             child: Center(
-                        //               child: Icon(
-                        //                 Icons.broken_image,
-                        //                 size: 20,
-                        //                 color: AppColors.subtleText,
-                        //               ),
-                        //             ),
-                        //           ),
-                        //     ),
-                        //   ),
-                        // ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(

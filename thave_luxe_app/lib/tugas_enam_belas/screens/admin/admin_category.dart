@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:thave_luxe_app/constant/app_color.dart'; // Import your AppColors
-import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart'; // Make sure this is your main ApiProvider
-import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Assuming Category model is here
+import 'package:thave_luxe_app/constant/app_color.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
 
 class ManageCategoriesScreen16 extends StatefulWidget {
-  final String? userEmail; // NEW: Added userEmail to constructor for admin check
+  final String? userEmail;
 
-  const ManageCategoriesScreen16({super.key, this.userEmail}); // NEW: Constructor updated
-  static const String id = '/adminCategory16'; // Unique ID for routing
+  const ManageCategoriesScreen16({super.key, this.userEmail});
+  static const String id = '/adminCategory16';
 
   @override
   State<ManageCategoriesScreen16> createState() =>
@@ -19,23 +19,21 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
   final ApiProvider _apiProvider = ApiProvider();
   List<Category> _categories = [];
   bool _isLoading = true;
-  String? _errorMessage; // Changed _error to _errorMessage for consistency
-  bool _isAdmin = false; // NEW: Added isAdmin flag
+  String? _errorMessage;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
-    // NEW: Initialize _isAdmin based on passed userEmail
     _isAdmin = widget.userEmail == 'admin@gmail.com';
     if (_isAdmin) {
-      _fetchCategories(); // Fetch categories only if admin
+      _fetchCategories();
     } else {
-      _isLoading = false; // Set loading to false as no fetch will occur
-      _errorMessage = 'Access Denied: Only admin users can manage categories.'; // Set access denied message
+      _isLoading = false;
+      _errorMessage = 'Access Denied: Only admin users can manage categories.';
     }
   }
 
-  // Fetches the list of categories from the API
   Future<void> _fetchCategories() async {
     setState(() {
       _isLoading = true;
@@ -44,21 +42,32 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
     try {
       final response = await _apiProvider.getCategories();
       setState(() {
-        _categories = response.data ?? []; // Update the list of categories
         _isLoading = false;
-        if (response.data == null) { // If no data but no exception, show message
-          _errorMessage = response.message ?? "No category data received from API.";
+        if (response.status == 'success') {
+          _categories = response.data ?? [];
+          if (_categories.isEmpty && response.message != null) {
+            _errorMessage = response.message;
+          } else if (_categories.isEmpty) {
+            _errorMessage = 'No categories found.';
+          }
+        } else {
+          _errorMessage =
+              response.message ??
+              response.error ??
+              'Failed to load categories.';
+          _categories = [];
         }
       });
-    } on Exception catch (e) { // Catch specific Exception
+    } on Exception catch (e) {
       setState(() {
-        _errorMessage = e.toString().replaceFirst('Exception: ', ''); // Set error message
+        _errorMessage =
+            'Network Error: ${e.toString().replaceFirst('Exception: ', '')}';
         _isLoading = false;
+        _categories = [];
       });
     }
   }
 
-  // Helper for showing snackbar messages
   void _showSnackBar(String message, Color color) {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,100 +85,125 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
     }
   }
 
-  // Adds a new category via API
   Future<void> _addCategory(String name) async {
-    // Only allow if admin
     if (!_isAdmin) {
-      _showSnackBar('Permission Denied: You are not authorized to add categories.', AppColors.redAccent);
+      _showSnackBar(
+        'Permission Denied: You are not authorized to add categories.',
+        AppColors.redAccent,
+      );
       return;
     }
-    showDialog( // Show loading indicator
+    showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
-        ),
-      ),
+      builder:
+          (context) => Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+            ),
+          ),
     );
     try {
-      await _apiProvider.addCategory(name: name);
-      if (mounted) Navigator.of(context).pop(); // Dismiss loading
-      await _fetchCategories(); // Refresh list after successful addition
-      _showSnackBar(
-        'Category added successfully!',
-        AppColors.green, // Changed to green for success
-      );
+      final response = await _apiProvider.addCategory(name: name);
+      if (mounted) Navigator.of(context).pop();
+
+      if (response.status == 'success') {
+        await _fetchCategories();
+        _showSnackBar(
+          response.message ?? 'Category added successfully!',
+          AppColors.green,
+        );
+      } else {
+        _showSnackBar(
+          'Failed to add category: ${response.message ?? response.error ?? 'Unknown error'}',
+          AppColors.redAccent,
+        );
+      }
     } on Exception catch (e) {
-      if (mounted) Navigator.of(context).pop(); // Dismiss loading
+      if (mounted) Navigator.of(context).pop();
       _showSnackBar(
-        'Failed to add category: ${e.toString().replaceFirst('Exception: ', '')}',
+        'Network Error: ${e.toString().replaceFirst('Exception: ', '')}',
         AppColors.redAccent,
       );
     }
   }
 
-  // Updates an existing category via API
   Future<void> _updateCategory(int id, String name) async {
-    // Only allow if admin
     if (!_isAdmin) {
-      _showSnackBar('Permission Denied: You are not authorized to update categories.', AppColors.redAccent);
+      _showSnackBar(
+        'Permission Denied: You are not authorized to update categories.',
+        AppColors.redAccent,
+      );
       return;
     }
-    showDialog( // Show loading indicator
+    showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
-        ),
-      ),
+      builder:
+          (context) => Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+            ),
+          ),
     );
     try {
-      await _apiProvider.updateCategory(id: id, name: name);
-      if (mounted) Navigator.of(context).pop(); // Dismiss loading
-      await _fetchCategories(); // Refresh list after successful update
-      _showSnackBar(
-        'Category updated successfully!',
-        AppColors.green, // Changed to green for success
+      // FIX HERE: Use categoryId: id
+      final response = await _apiProvider.updateCategory(
+        categoryId: id,
+        name: name,
       );
+      if (mounted) Navigator.of(context).pop();
+
+      if (response.status == 'success') {
+        await _fetchCategories();
+        _showSnackBar(
+          response.message ?? 'Category updated successfully!',
+          AppColors.green,
+        );
+      } else {
+        _showSnackBar(
+          'Failed to update category: ${response.message ?? response.error ?? 'Unknown error'}',
+          AppColors.redAccent,
+        );
+      }
     } on Exception catch (e) {
-      if (mounted) Navigator.of(context).pop(); // Dismiss loading
+      if (mounted) Navigator.of(context).pop();
       _showSnackBar(
-        'Failed to update category: ${e.toString().replaceFirst('Exception: ', '')}',
+        'Network Error: ${e.toString().replaceFirst('Exception: ', '')}',
         AppColors.redAccent,
       );
     }
   }
 
-  // Deletes a category after user confirmation
   Future<void> _deleteCategory(int id) async {
-    // Only allow if admin
     if (!_isAdmin) {
-      _showSnackBar('Permission Denied: You are not authorized to delete categories.', AppColors.redAccent);
+      _showSnackBar(
+        'Permission Denied: You are not authorized to delete categories.',
+        AppColors.redAccent,
+      );
       return;
     }
 
     bool? confirm = await showDialog<bool>(
       context: context,
-      barrierDismissible: false, // User must tap button to dismiss
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: AppColors.darkBackground, // Dialog background color
+          backgroundColor: AppColors.darkBackground,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
           title: Text(
             'Confirm Deletion',
             style: GoogleFonts.playfairDisplay(
-              color: AppColors.redAccent, // Title color for deletion
+              color: AppColors.redAccent,
               fontWeight: FontWeight.bold,
               fontSize: 22,
             ),
           ),
           content: Text(
             'Are you sure you want to delete this category?',
-            style: GoogleFonts.montserrat(color: AppColors.lightText), // Content text color
+            style: GoogleFonts.montserrat(color: AppColors.lightText),
           ),
           actions: <Widget>[
             TextButton(
@@ -179,15 +213,18 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
                 style: GoogleFonts.montserrat(color: AppColors.subtleGrey),
               ),
             ),
-            ElevatedButton( // Changed to ElevatedButton for delete for better styling
+            ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.redAccent, // Red for delete button
+                backgroundColor: AppColors.redAccent,
                 foregroundColor: AppColors.lightText,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
               child: Text(
                 'Delete',
@@ -203,38 +240,51 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
     );
 
     if (confirm == true) {
-      showDialog( // Show loading indicator after confirmation
+      showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
-          ),
-        ),
+        builder:
+            (context) => Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppColors.primaryGold,
+                ),
+              ),
+            ),
       );
       try {
-        await _apiProvider.deleteCategory(id: id);
-        if (mounted) Navigator.of(context).pop(); // Dismiss loading
-        await _fetchCategories(); // Refresh list after successful deletion
-        _showSnackBar(
-          'Category deleted successfully!',
-          AppColors.green, // Changed to green for success
-        );
+        // FIX HERE: Use categoryId: idj
+        final response = await _apiProvider.deleteCategory(categoryId: id);
+        if (mounted) Navigator.of(context).pop();
+
+        if (response.status == 'success') {
+          await _fetchCategories();
+          _showSnackBar(
+            response.message ?? 'Category deleted successfully!',
+            AppColors.green,
+          );
+        } else {
+          _showSnackBar(
+            'Failed to delete category: ${response.message ?? response.error ?? 'Unknown error'}',
+            AppColors.redAccent,
+          );
+        }
       } on Exception catch (e) {
-        if (mounted) Navigator.of(context).pop(); // Dismiss loading
+        if (mounted) Navigator.of(context).pop();
         _showSnackBar(
-          'Failed to delete category: ${e.toString().replaceFirst('Exception: ', '')}',
+          'Network Error: ${e.toString().replaceFirst('Exception: ', '')}',
           AppColors.redAccent,
         );
       }
     }
   }
 
-  // Shows a dialog for adding a new category or editing an existing one
   void _showAddEditDialog({Category? category}) {
-    // Only allow dialog if admin
     if (!_isAdmin) {
-      _showSnackBar('Permission Denied: You are not authorized to perform this action.', AppColors.redAccent);
+      _showSnackBar(
+        'Permission Denied: You are not authorized to perform this action.',
+        AppColors.redAccent,
+      );
       return;
     }
 
@@ -243,10 +293,10 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
     );
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
-      builder: (BuildContext dialogContext) { // Use dialogContext for Navigator.pop within dialog
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
         return AlertDialog(
-          backgroundColor: AppColors.darkBackground, // Dialog background color
+          backgroundColor: AppColors.darkBackground,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -270,16 +320,22 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.primaryGold, width: 2),
+                borderSide: const BorderSide(
+                  color: AppColors.primaryGold,
+                  width: 2,
+                ),
               ),
               filled: true,
               fillColor: AppColors.searchBarBackground.withOpacity(0.2),
-              contentPadding: const EdgeInsets.symmetric(vertical: 14.0, horizontal: 10),
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 14.0,
+                horizontal: 10,
+              ),
             ),
           ),
           actions: <Widget>[
             TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(), // Use dialogContext
+              onPressed: () => Navigator.of(dialogContext).pop(),
               child: Text(
                 'Cancel',
                 style: GoogleFonts.montserrat(color: AppColors.subtleGrey),
@@ -289,14 +345,11 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
               onPressed: () {
                 final name = nameController.text.trim();
                 if (name.isNotEmpty) {
-                  Navigator.of(dialogContext).pop(); // Close the dialog immediately
+                  Navigator.of(dialogContext).pop();
                   if (category == null) {
-                    _addCategory(name); // Add new category
+                    _addCategory(name);
                   } else {
-                    _updateCategory(
-                      category.id!,
-                      name,
-                    ); // Update existing category
+                    _updateCategory(category.id!, name);
                   }
                 } else {
                   _showSnackBar(
@@ -306,12 +359,15 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryGold, // Button background
-                foregroundColor: AppColors.darkBackground, // Button text color
+                backgroundColor: AppColors.primaryGold,
+                foregroundColor: AppColors.darkBackground,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
               ),
               child: Text(
                 category == null ? 'Add' : 'Update',
@@ -340,20 +396,16 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
         backgroundColor: AppColors.darkBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.primaryGold),
           onPressed: () {
             Navigator.pop(context);
           },
         ),
         actions: [
-          // Only show add button if admin
           if (_isAdmin)
             IconButton(
-              icon: const Icon(
-                Icons.add,
-                color: AppColors.primaryGold,
-              ),
-              onPressed: () => _showAddEditDialog(), // Open dialog to add new category
+              icon: const Icon(Icons.add, color: AppColors.primaryGold),
+              onPressed: () => _showAddEditDialog(),
               tooltip: 'Add New Category',
             ),
         ],
@@ -361,146 +413,164 @@ class _ManageCategoriesScreen16State extends State<ManageCategoriesScreen16> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
+            colors: [
+              AppColors.darkBackground,
+              AppColors.backgroundGradientLight,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
         ),
         child: RefreshIndicator(
-          onRefresh: _isAdmin ? _fetchCategories : () async {}, // Only refresh if admin
+          onRefresh: _isAdmin ? _fetchCategories : () async {},
           color: AppColors.primaryGold,
-          child: _isLoading
-              ? Center(
-                  child: CircularProgressIndicator(
-                    color: AppColors.primaryGold,
-                  ),
-                )
-              : _errorMessage != null
+          child:
+              _isLoading
                   ? Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(24.0),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'Error: $_errorMessage',
-                              textAlign: TextAlign.center,
-                              style: GoogleFonts.montserrat(
-                                color: AppColors.redAccent,
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 20),
-                            // Only show retry/login if admin and relevant error
-                            if (_isAdmin && (_errorMessage!.contains('Authentication token is missing') || _errorMessage!.contains('Unauthorized')))
-                              ElevatedButton(
-                                onPressed: () {
-                                  _showSnackBar('Please re-login as admin.', AppColors.orange);
-                                  Navigator.pushReplacementNamed(context, '/login16');
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryGold,
-                                  foregroundColor: AppColors.darkBackground,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Login as Admin',
-                                  style: GoogleFonts.playfairDisplay(fontSize: 16),
-                                ),
-                              )
-                            else if (_isAdmin) // General retry for admins
-                              ElevatedButton(
-                                onPressed: _fetchCategories,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primaryGold,
-                                  foregroundColor: AppColors.darkBackground,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Retry',
-                                  style: GoogleFonts.playfairDisplay(fontSize: 16),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : _categories.isEmpty
-                      ? Center(
-                          child: Text(
-                            _isAdmin
-                                ? 'No categories found. Add a new category!'
-                                : 'No categories available.', // Different message for non-admin
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryGold,
+                    ),
+                  )
+                  : _errorMessage != null
+                  ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Error: $_errorMessage',
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.montserrat(
-                              color: AppColors.subtleText,
+                              color: AppColors.redAccent,
                               fontSize: 16,
                             ),
-                            textAlign: TextAlign.center,
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16.0),
-                          itemCount: _categories.length,
-                          itemBuilder: (context, index) {
-                            final category = _categories[index];
-                            return Card(
-                              elevation: 5,
-                              margin: const EdgeInsets.symmetric(vertical: 8),
-                              color: AppColors.cardBackgroundLight, // Consistent with other screens
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                          const SizedBox(height: 20),
+                          if (_isAdmin &&
+                              (_errorMessage!.contains('token is missing') ||
+                                  _errorMessage!.contains('Unauthorized')))
+                            ElevatedButton(
+                              onPressed: () {
+                                _showSnackBar(
+                                  'Please re-login as admin.',
+                                  AppColors.orange,
+                                );
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/login16',
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGold,
+                                foregroundColor: AppColors.darkBackground,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                              child: ListTile(
-                                title: Text(
-                                  category.name ?? 'No Name',
-                                  style: GoogleFonts.playfairDisplay(
-                                    color: AppColors.textDark, // Consistent with other screens
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              child: Text(
+                                'Login as Admin',
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 16,
                                 ),
-                                subtitle: Text(
-                                  'ID: ${category.id ?? 'N/A'}',
-                                  style: GoogleFonts.montserrat(
-                                    color: AppColors.subtleText,
-                                    fontSize: 14,
-                                  ),
+                              ),
+                            )
+                          else if (_isAdmin &&
+                              _errorMessage !=
+                                  'Access Denied: Only admin users can manage categories.')
+                            ElevatedButton(
+                              onPressed: _fetchCategories,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryGold,
+                                foregroundColor: AppColors.darkBackground,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                trailing: _isAdmin
-                                    ? Row( // Only show action buttons if admin
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.edit,
-                                              color: AppColors.blue,
-                                            ),
-                                            onPressed: () => _showAddEditDialog(
+                              ),
+                              child: Text(
+                                'Retry',
+                                style: GoogleFonts.playfairDisplay(
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  )
+                  : _categories.isEmpty
+                  ? Center(
+                    child: Text(
+                      _isAdmin
+                          ? 'No categories found. Add a new category!'
+                          : 'No categories available.',
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.subtleText,
+                        fontSize: 16,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                  : ListView.builder(
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _categories.length,
+                    itemBuilder: (context, index) {
+                      final category = _categories[index];
+                      return Card(
+                        elevation: 5,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        color: AppColors.cardBackground,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            category.name ?? 'No Name',
+                            style: GoogleFonts.playfairDisplay(
+                              color: AppColors.textDark,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'ID: ${category.id ?? 'N/A'}',
+                            style: GoogleFonts.montserrat(
+                              color: AppColors.subtleText,
+                              fontSize: 14,
+                            ),
+                          ),
+                          trailing:
+                              _isAdmin
+                                  ? Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.edit,
+                                          color: AppColors.blue,
+                                        ),
+                                        onPressed:
+                                            () => _showAddEditDialog(
                                               category: category,
                                             ),
-                                            tooltip: 'Edit Category',
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete,
-                                              color: AppColors.redAccent,
-                                            ),
-                                            onPressed: () => _deleteCategory(
-                                              category.id!,
-                                            ),
-                                            tooltip: 'Delete Category',
-                                          ),
-                                        ],
-                                      )
-                                    : null, // No actions if not admin
-                              ),
-                            );
-                          },
+                                        tooltip: 'Edit Category',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: AppColors.redAccent,
+                                        ),
+                                        onPressed:
+                                            () => _deleteCategory(category.id!),
+                                        tooltip: 'Delete Category',
+                                      ),
+                                    ],
+                                  )
+                                  : null,
                         ),
+                      );
+                    },
+                  ),
         ),
       ),
     );

@@ -3,12 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/helper/preference_handler.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/manage_product_screen.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/admin/admin_dashboard_screen.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/screens/auth/login_screen_16.dart';
 
 class ProfileScreen16 extends StatefulWidget {
   const ProfileScreen16({super.key});
-
   static const String id = '/profile16';
 
   @override
@@ -27,9 +26,10 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
   Future<User?> _fetchUserProfile() async {
     try {
       final user = await PreferenceHandler.getUserData();
+      debugPrint('PROFILE_SCREEN: Fetched user data: ${user?.toJson()}');
       return user;
     } catch (e) {
-      debugPrint('Error fetching local user data: $e');
+      debugPrint('PROFILE_SCREEN: Error fetching local user data: $e');
       return null;
     }
   }
@@ -40,7 +40,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         SnackBar(
           content: Text(
             message,
-            style: GoogleFonts.montserrat(color: AppColors.lightText),
+            style: GoogleFonts.montserrat(color: AppColors.textLight),
           ),
           backgroundColor: color,
           duration: const Duration(seconds: 2),
@@ -52,49 +52,60 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
   }
 
   Future<void> _handleLogout() async {
+    // 1. Show loader dialog
     showDialog(
       context: context,
       barrierDismissible: false,
       builder:
-          (context) => Center(
+          (_) => const Center(
             child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primaryGold),
+              valueColor: AlwaysStoppedAnimation(AppColors.primaryGold),
             ),
           ),
     );
 
     try {
-      await PreferenceHandler.clearUserDetails(); // Clear local user data
-      _showSnackBar('Logged out successfully!', AppColors.green);
+      await PreferenceHandler.clearUserDetails(); // 2. Clear user data
+
+      // 3. Close the dialog BEFORE navigation
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // 4. Show success snackbar (optional)
+      _showSnackBar('Logged out successfully!', AppColors.successGreen);
+
+      // 5. Navigate to Login screen
       if (mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen16()),
+          MaterialPageRoute(builder: (_) => const LoginScreen16()),
           (Route<dynamic> route) => false,
         );
       }
     } catch (e) {
-      debugPrint('Logout error (local preference clear): $e');
+      // 6. Close loader if error happens
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
       _showSnackBar(
         'Logout failed: ${e.toString().replaceFirst('Exception: ', '')}',
         AppColors.redAccent,
       );
-    } finally {
-      if (mounted) Navigator.of(context).pop(); // Dismiss loading indicator
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.darkBackground,
+      backgroundColor: AppColors.backgroundLight,
       appBar: _buildAppBar(),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            // Updated gradient for background
             colors: [
-              AppColors.backgroundGradientStartDark,
-              AppColors.darkBackground,
+              AppColors.backgroundLight,
+              AppColors.backgroundGradientLight,
             ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
@@ -104,7 +115,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
           future: _userProfileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
+              return const Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
                     AppColors.primaryGold,
@@ -115,7 +126,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
               return Center(
                 child: Text(
                   'Error loading profile: ${snapshot.error}',
-                  style: GoogleFonts.montserrat(color: AppColors.redAccent),
+                  style: GoogleFonts.montserrat(color: AppColors.errorRed),
                 ),
               );
             } else if (snapshot.hasData && snapshot.data != null) {
@@ -131,10 +142,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       icon: Icons.edit_outlined,
                       title: 'Edit Profile',
                       onTap: () {
-                        _showSnackBar(
-                          'Edit Profile functionality not yet implemented.',
-                          AppColors.subtleGrey,
-                        );
+                        _showSnackBar('coming soon!!', AppColors.subtleGrey);
                       },
                     ),
                     _buildProfileOption(
@@ -146,24 +154,21 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                     ),
                     _buildProfileOption(
                       icon: Icons.star_border,
-                      title: 'Favorite Products',
+                      title: 'Wishlist Products',
                       onTap: () {
-                        _showSnackBar(
-                          'Favorite Products functionality not yet implemented.',
-                          AppColors.subtleGrey,
-                        );
+                        _showSnackBar('coming soon!!', AppColors.subtleGrey);
                       },
                     ),
                     if (user.email == 'admin@gmail.com')
                       _buildProfileOption(
                         icon: Icons.admin_panel_settings_outlined,
-                        title: 'Manage Products',
+                        title: 'Admin Dashboard',
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder:
-                                  (context) => ManageProductsScreen16(
+                                  (_) => AdminDashboardScreen16(
                                     userEmail: user.email,
                                   ),
                             ),
@@ -176,12 +181,9 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       onTap: _handleLogout,
                       isLogout: true,
                     ),
-                    // Reduced bottom padding
                     const SizedBox(height: 10),
                     _buildAppVersion(),
-                    const SizedBox(
-                      height: 10,
-                    ), // A little extra space at the very bottom
+                    const SizedBox(height: 10),
                   ],
                 ),
               );
@@ -190,17 +192,17 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.person_off_outlined,
                       size: 80,
-                      color: AppColors.subtleGrey,
+                      color: AppColors.iconDark,
                     ),
                     const SizedBox(height: 20),
                     Text(
                       'No user logged in.\nPlease login to view your profile.',
                       style: GoogleFonts.montserrat(
                         fontSize: 20,
-                        color: AppColors.subtleText,
+                        color: AppColors.textDark,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -209,14 +211,14 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                       onPressed: () {
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(
-                            builder: (context) => const LoginScreen16(),
+                            builder: (_) => const LoginScreen16(),
                           ),
-                          (Route<dynamic> route) => false,
+                          (_) => false,
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryGold,
-                        foregroundColor: AppColors.darkBackground,
+                        foregroundColor: AppColors.textLight,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -245,7 +247,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
+        icon: const Icon(Icons.arrow_back_ios, color: AppColors.iconDark),
         onPressed: () {
           Navigator.pop(context);
         },
@@ -254,47 +256,34 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
         'My Profile',
         style: GoogleFonts.playfairDisplay(
           fontWeight: FontWeight.bold,
-          color: AppColors.lightText,
+          color: AppColors.textDark,
           fontSize: 24,
         ),
       ),
       centerTitle: true,
-      actions: const <Widget>[],
     );
   }
 
   Widget _buildProfileHeader(User user) {
     return Column(
       children: <Widget>[
-        // Updated profile photo design
         Container(
-          width: 120, // Increased size slightly
+          width: 120,
           height: 120,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: AppColors.primaryGold, // Solid gold background
-            border: Border.all(
-              color: AppColors.borderGold, // Richer gold border
-              width: 3,
-            ),
+            color: AppColors.primaryGold,
+            border: Border.all(color: AppColors.borderGold, width: 3),
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadowColor.withOpacity(
-                  0.5,
-                ), // Stronger shadow
+                color: AppColors.shadowColor.withOpacity(0.5),
                 blurRadius: 15,
                 offset: const Offset(0, 8),
               ),
             ],
           ),
-          child: Center(
-            child: Icon(
-              Icons.person,
-              size: 80, // Larger icon
-              color:
-                  AppColors
-                      .darkBackground, // Dark background color for the icon
-            ),
+          child: const Center(
+            child: Icon(Icons.person, size: 80, color: AppColors.textLight),
           ),
         ),
         const SizedBox(height: 20),
@@ -303,7 +292,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
           style: GoogleFonts.playfairDisplay(
             fontSize: 28,
             fontWeight: FontWeight.bold,
-            color: AppColors.lightText,
+            color: AppColors.textDark,
           ),
         ),
         const SizedBox(height: 5),
@@ -311,7 +300,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
           user.email ?? 'No Email',
           style: GoogleFonts.montserrat(
             fontSize: 16,
-            color: AppColors.subtleGrey,
+            color: AppColors.subtleText,
           ),
         ),
       ],
@@ -325,13 +314,13 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
     bool isLogout = false,
   }) {
     return Card(
-      color: AppColors.cardBackgroundDark,
+      color: AppColors.cardBackground,
       margin: const EdgeInsets.symmetric(vertical: 10.0),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
-        // Added a subtle border to the cards
         side: BorderSide(
-          color: AppColors.borderGold.withOpacity(0.3), // Light gold border
+          color:
+              AppColors.subtleBorder ?? AppColors.subtleText.withOpacity(0.3),
           width: 1.0,
         ),
       ),
@@ -346,7 +335,7 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
             children: <Widget>[
               Icon(
                 icon,
-                color: isLogout ? AppColors.redAccent : AppColors.primaryGold,
+                color: isLogout ? AppColors.errorRed : AppColors.primaryGold,
                 size: 28,
               ),
               const SizedBox(width: 20),
@@ -356,13 +345,13 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
                   style: GoogleFonts.montserrat(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: isLogout ? AppColors.redAccent : AppColors.lightText,
+                    color: isLogout ? AppColors.errorRed : AppColors.textDark,
                   ),
                 ),
               ),
               Icon(
                 Icons.arrow_forward_ios,
-                color: isLogout ? AppColors.redAccent : AppColors.subtleGrey,
+                color: isLogout ? AppColors.errorRed : AppColors.iconDark,
                 size: 20,
               ),
             ],
@@ -374,8 +363,8 @@ class _ProfileScreen16State extends State<ProfileScreen16> {
 
   Widget _buildAppVersion() {
     return Text(
-      'App Version 1.0.0', // Replace with actual version from pubspec.yaml if desired
-      style: GoogleFonts.montserrat(fontSize: 12, color: AppColors.subtleGrey),
+      'App Version 1.0.0',
+      style: GoogleFonts.montserrat(fontSize: 12, color: AppColors.subtleText),
     );
   }
 }

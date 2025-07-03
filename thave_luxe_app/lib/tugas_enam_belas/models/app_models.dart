@@ -1,6 +1,6 @@
-// lib/tugas_enam_belas/models/app_models.dart
+import 'package:flutter/material.dart'; // For debugPrint in general
 
-// Helper function for robust integer parsing
+// Helper functions for safe parsing
 int? _safeParseInt(dynamic value) {
   if (value == null) return null;
   if (value is int) return value;
@@ -9,7 +9,6 @@ int? _safeParseInt(dynamic value) {
   return null;
 }
 
-// Helper function for robust double parsing
 double? _safeParseDouble(dynamic value) {
   if (value == null) return null;
   if (value is double) return value;
@@ -22,40 +21,96 @@ double? _safeParseDouble(dynamic value) {
 // Base API Response Model
 // -----------------------------------------------------------------------------
 
-/// Represents a generic API response with a message and optional data.
 class ApiResponse<T> {
+  final String status;
   final String? message;
   final T? data;
   final String? error; // For error messages that are not exceptions
 
-  ApiResponse({this.message, this.data, this.error});
+  ApiResponse({required this.status, this.message, this.data, this.error});
 
-  /// Factory constructor to create an ApiResponse from a JSON map.
-  /// It dynamically handles the data parsing based on the provided `fromJsonT` function.
+  /// Factory constructor to create an ApiResponse from a JSON map with data.
   factory ApiResponse.fromJson(
     Map<String, dynamic> json,
     T Function(dynamic json) fromJsonT,
   ) {
+    final String? apiMessage = json['message'] as String?;
+    final String? apiError = json['error'] as String?;
+    final dynamic rawData = json['data'];
+
+    T? parsedData;
+    String inferredStatus;
+
+    final String? directStatus = json['status'] as String?;
+
+    if (directStatus == 'success') {
+      inferredStatus = 'success';
+    } else if (directStatus == 'error') {
+      inferredStatus = 'error';
+    } else if (rawData != null) {
+      inferredStatus = 'success';
+      try {
+        parsedData = fromJsonT(rawData);
+      } catch (e) {
+        debugPrint('Error parsing data in ApiResponse.fromJson: $e');
+        inferredStatus = 'error';
+      }
+    } else if (apiError != null) {
+      inferredStatus = 'error';
+    } else {
+      inferredStatus = 'unknown';
+    }
+
     return ApiResponse<T>(
-      message: json['message'] as String?,
-      data: json['data'] != null ? fromJsonT(json['data']) : null,
-      error: json['error'] as String?,
+      status: inferredStatus,
+      message: apiMessage,
+      data: parsedData,
+      error: apiError,
     );
   }
 
-  /// Factory constructor for responses without data (e.g., success message only)
+  /// Factory constructor for responses without data (e.g., logout, delete success message).
   factory ApiResponse.fromJsonNoData(Map<String, dynamic> json) {
+    final String? apiMessage = json['message'] as String?;
+    final String? apiError = json['error'] as String?;
+
+    String inferredStatus;
+    final String? directStatus = json['status'] as String?;
+
+    if (directStatus == 'success') {
+      inferredStatus = 'success';
+    } else if (directStatus == 'error') {
+      inferredStatus = 'error';
+    } else if (apiError != null) {
+      inferredStatus = 'error';
+    } else {
+      inferredStatus = 'success';
+    }
+
     return ApiResponse<T>(
-      message: json['message'] as String?,
-      data: null, // No data to parse
-      error: json['error'] as String?,
+      status: inferredStatus,
+      message: apiMessage,
+      data: null,
+      error: apiError,
     );
   }
-}
 
-// -----------------------------------------------------------------------------
-// Authentication Models
-// -----------------------------------------------------------------------------
+  // Factory constructor for creating an ERROR ApiResponse explicitly in code
+  factory ApiResponse.error({
+    String? message,
+    String? error,
+    String status = 'error',
+  }) {
+    return ApiResponse<T>(
+      status: status,
+      message: message,
+      error: error ?? message,
+      data: null,
+    );
+  }
+
+  bool get isSuccess => status == 'success';
+}
 
 /// Model for user data returned from authentication.
 class User {
@@ -134,6 +189,11 @@ class Brand {
       updatedAt: json['updated_at'] as String?,
     );
   }
+
+  // This getter was causing an issue if you didn't have a logoUrl in your API response.
+  // If your Brand API does not return a 'logo_url', remove this getter or implement it carefully.
+  // For now, I'm commenting it out as it's not directly related to the JSON parsing.
+  // get logoUrl => null;
 
   Map<String, dynamic> toJson() {
     return {
@@ -219,7 +279,6 @@ class Product {
       brandId: _safeParseInt(json['brand_id']),
       brandName: json['brand'] as String?, // API uses 'brand' not 'brand_name'
       discount: _safeParseDouble(json['discount']),
-      // Fixed: Change 'images' to 'image_urls' to match API response
       imageUrls:
           (json['image_urls'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -237,14 +296,11 @@ class Product {
       'price': price,
       'stock': stock,
       'category_id': categoryId,
-      'category_name':
-          categoryName, // Keep for serialization consistency if API expects it
+      'category_name': categoryName,
       'brand_id': brandId,
-      'brand_name':
-          brandName, // Keep for serialization consistency if API expects it
+      'brand_name': brandName,
       'discount': discount,
-      'image_urls':
-          imageUrls, // Changed to 'image_urls' for serialization consistency
+      'image_urls': imageUrls,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
@@ -271,7 +327,6 @@ class CartProduct {
       name: json['name'] as String?,
       price: _safeParseInt(json['price']),
       stock: _safeParseInt(json['stock']),
-      // Fixed: Change 'images' to 'image_urls' to match API response
       imageUrls:
           (json['image_urls'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -285,8 +340,7 @@ class CartProduct {
       'name': name,
       'price': price,
       'stock': stock,
-      'image_urls':
-          imageUrls, // Changed to 'image_urls' for serialization consistency
+      'image_urls': imageUrls,
     };
   }
 }
@@ -382,8 +436,7 @@ class CheckoutProduct {
       'name': name,
       'price': price,
       'discount': discount,
-      'image_urls':
-          imageUrls, // Changed to 'image_urls' for serialization consistency
+      'image_urls': imageUrls,
     };
   }
 }
@@ -501,7 +554,6 @@ class HistoryProduct {
       brandId: _safeParseInt(json['brand_id']),
       brandName: json['brand'] as String?, // Fixed: Use 'brand'
       discount: _safeParseDouble(json['discount']),
-      // Fixed: Change 'images' to 'image_urls' to match API response
       imageUrls:
           (json['image_urls'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -523,8 +575,7 @@ class HistoryProduct {
       'brand_id': brandId,
       'brand_name': brandName,
       'discount': discount,
-      'image_urls':
-          imageUrls, // Changed to 'image_urls' for serialization consistency
+      'image_urls': imageUrls,
       'created_at': createdAt,
       'updated_at': updatedAt,
     };
@@ -537,7 +588,7 @@ class HistoryItem {
   final int? productId;
   final HistoryProduct? product; // Using HistoryProduct
   final int? quantity;
-  final int? price; // Price at the time of checkout
+  final int? price; // Price at the time of checkoutd
   final String? createdAt;
   final String? updatedAt;
 

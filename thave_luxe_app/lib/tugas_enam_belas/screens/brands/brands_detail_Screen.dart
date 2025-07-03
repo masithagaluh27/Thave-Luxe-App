@@ -1,3 +1,5 @@
+// lib/tugas_enam_belas/screens/brand/brand_detail_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -105,7 +107,8 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
   Widget build(BuildContext context) {
     if (_isLoadingInitialData) {
       return Scaffold(
-        backgroundColor: AppColors.backgroundLight,
+        backgroundColor:
+            AppColors.backgroundLight, // Consistent light background
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -121,7 +124,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                 'Loading products for ${widget.brandName}...',
                 style: GoogleFonts.montserrat(
                   fontSize: 16,
-                  color: AppColors.textDark,
+                  color: AppColors.textDark, // Dark text on light background
                 ),
               ),
             ],
@@ -132,7 +135,8 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
 
     if (_initialDataErrorMessage != null) {
       return Scaffold(
-        backgroundColor: AppColors.backgroundLight,
+        backgroundColor:
+            AppColors.backgroundLight, // Consistent light background
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -141,14 +145,14 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
               children: [
                 const Icon(
                   Icons.error_outline,
-                  color: AppColors.errorRed,
+                  color: AppColors.errorRed, // Red for error
                   size: 40,
                 ),
                 const SizedBox(height: 10),
                 Text(
                   _initialDataErrorMessage!,
                   style: GoogleFonts.montserrat(
-                    color: AppColors.errorRed,
+                    color: AppColors.errorRed, // Red for error text
                     fontSize: 16,
                   ),
                   textAlign: TextAlign.center,
@@ -157,7 +161,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                 ElevatedButton(
                   onPressed: _fetchProductsByBrand,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryGold,
+                    backgroundColor: AppColors.primaryGold, // Gold button
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -169,7 +173,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                   child: Text(
                     'Retry',
                     style: GoogleFonts.montserrat(
-                      color: Colors.white,
+                      color: AppColors.textLight, // White text on gold button
                       fontSize: 16,
                     ),
                   ),
@@ -182,7 +186,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor: AppColors.backgroundLight, // Consistent light background
       appBar: _buildAppBar(context),
       body: SingleChildScrollView(
         child: Column(
@@ -208,10 +212,14 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.backgroundLight,
+      backgroundColor:
+          AppColors.backgroundLight, // Light background for app bar
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: AppColors.textDark),
+        icon: const Icon(
+          Icons.arrow_back_ios,
+          color: AppColors.iconColorDark,
+        ), // Dark icon
         onPressed: () {
           Navigator.pop(context);
         },
@@ -219,7 +227,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
       title: Text(
         widget.brandName,
         style: GoogleFonts.playfairDisplay(
-          color: AppColors.textDark,
+          color: AppColors.textDark, // Dark text
           fontSize: 24,
           fontWeight: FontWeight.bold,
         ),
@@ -229,7 +237,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
         IconButton(
           icon: const Icon(
             Icons.notifications_none_outlined,
-            color: AppColors.subtleText,
+            color: AppColors.iconColorDark, // Dark icon for consistency
             size: 28,
           ),
           onPressed: () {
@@ -245,13 +253,16 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: AppColors.searchBarBackground,
+        color: AppColors.cardBackground, // Changed to light card background
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: AppColors.searchBarBorder),
+        border: Border.all(
+          color:
+              AppColors.subtleBorder ?? AppColors.subtleText.withOpacity(0.3),
+        ), // Subtle border
       ),
       child: Row(
         children: <Widget>[
-          const Icon(Icons.search, color: AppColors.subtleText),
+          const Icon(Icons.search, color: AppColors.subtleText), // Subtle icon
           const SizedBox(width: 10),
           const Expanded(
             child: TextField(
@@ -261,13 +272,16 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                 isDense: true,
                 contentPadding: EdgeInsets.zero,
               ),
-              style: TextStyle(fontSize: 16, color: AppColors.textDark),
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textDark,
+              ), // Dark text for input
             ),
           ),
           IconButton(
             icon: const Icon(
               Icons.camera_alt_outlined,
-              color: AppColors.subtleText,
+              color: AppColors.subtleText, // Subtle icon
             ),
             onPressed: () {
               print('Camera search tapped');
@@ -286,7 +300,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
           child: Text(
             'No products found for this brand, or brand ID is not available in API response.',
             style: GoogleFonts.montserrat(
-              color: AppColors.subtleText,
+              color: AppColors.subtleText, // Subtle text on light background
               fontSize: 16,
             ),
             textAlign: TextAlign.center,
@@ -349,11 +363,11 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.cardBackgroundLight,
+          color: AppColors.cardBackground, // Changed to light card background
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withOpacity(0.1), // Subtle shadow
               blurRadius: 10,
               offset: const Offset(0, 5),
             ),
@@ -376,11 +390,13 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                     errorBuilder:
                         (context, error, stackTrace) => Container(
                           height: 120,
-                          color: AppColors.imagePlaceholderLight,
+                          color:
+                              AppColors
+                                  .imagePlaceholderLight, // Light placeholder background
                           child: const Center(
                             child: Icon(
                               Icons.image_not_supported_outlined,
-                              color: AppColors.accentGrey,
+                              color: AppColors.accentGrey, // Neutral grey icon
                             ),
                           ),
                         ),
@@ -392,11 +408,15 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                   child: Container(
                     padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
-                      color: AppColors.cardBackgroundLight,
+                      color:
+                          AppColors
+                              .cardBackground, // Changed to light card background
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.textDark.withOpacity(0.1),
+                          color: AppColors.textDark.withOpacity(
+                            0.1,
+                          ), // Subtle shadow
                           blurRadius: 5,
                           offset: const Offset(0, 2),
                         ),
@@ -404,7 +424,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                     ),
                     child: const Icon(
                       Icons.favorite_border,
-                      color: AppColors.subtleText,
+                      color: AppColors.subtleText, // Subtle icon
                       size: 20,
                     ),
                   ),
@@ -416,14 +436,17 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                     width: 40,
                     height: 40,
                     decoration: const BoxDecoration(
-                      color: AppColors.primaryGold,
+                      color: AppColors.primaryGold, // Gold button
                       borderRadius: BorderRadius.only(
                         topLeft: Radius.circular(15),
                         bottomRight: Radius.circular(15),
                       ),
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.add, color: AppColors.lightText),
+                      icon: const Icon(
+                        Icons.add,
+                        color: AppColors.textLight,
+                      ), // White icon on gold button
                       onPressed: () {
                         print('Add ${product.name} to cart');
                       },
@@ -441,7 +464,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                     '$brandNameToDisplay · $categoryNameToDisplay',
                     style: GoogleFonts.montserrat(
                       fontSize: 13,
-                      color: AppColors.subtleText,
+                      color: AppColors.subtleText, // Subtle text
                     ),
                   ),
                   const SizedBox(height: 5),
@@ -450,7 +473,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                     style: GoogleFonts.montserrat(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textDark,
+                      color: AppColors.textDark, // Dark text
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -463,7 +486,7 @@ class _BrandDetailScreen16State extends State<BrandDetailScreen16> {
                         style: GoogleFonts.montserrat(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.primaryGold,
+                          color: AppColors.primaryGold, // Gold accent for price
                         ),
                       ),
                     ],

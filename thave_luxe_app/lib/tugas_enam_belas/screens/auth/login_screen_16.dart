@@ -6,7 +6,7 @@ import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/helper/preference_handler.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
-import 'package:thave_luxe_app/tugas_enam_belas/screens/homescreen.dart'; // Import model tunggal app_models.dart
+import 'package:thave_luxe_app/tugas_enam_belas/screens/homescreen.dart';
 
 class LoginScreen16 extends StatefulWidget {
   const LoginScreen16({super.key});
@@ -70,38 +70,79 @@ class _LoginScreen16State extends State<LoginScreen16> {
     }
 
     setState(() => _isLoading = true);
+    debugPrint(
+      'LOGIN_SCREEN: Login attempt started for: ${_emailController.text}',
+    );
 
     try {
-      // Menggunakan ApiResponse<AuthData> karena login mengembalikan AuthData
       final ApiResponse<AuthData> response = await _apiProvider.login(
         email: _emailController.text,
         password: _passwordController.text,
       );
 
-      // Cek jika login sukses dan ada data AuthData (yang berisi token dan user)
-      if (response.data != null &&
+      // >>> NEW DEBUG PRINT: Print the raw API response status and message
+      debugPrint(
+        'LOGIN_SCREEN: Raw API Response Status: ${response.status}',
+      ); // Add this
+      debugPrint(
+        'LOGIN_SCREEN: Raw API Response Message: ${response.message}',
+      ); // Add this
+
+      // YOUR CURRENT CONDITION: response.data != null && response.data!.token != null && response.data!.user != null
+      // PREVIOUSLY SUGGESTED CONDITION: response.status == 'success'
+      // Let's ensure 'response.status' is actually considered here.
+      if (response.status == 'success' && // <--- CRITICAL: ADD THIS CHECK BACK!
+          response.data != null &&
           response.data!.token != null &&
           response.data!.user != null) {
-        // Simpan token
+        debugPrint('LOGIN_SCREEN: Login successful conditions met.');
+
         await PreferenceHandler.setToken(response.data!.token!);
-        // Simpan data user lainnya (objek User)
         await PreferenceHandler.setUserData(response.data!.user!);
 
         final savedToken = await PreferenceHandler.getToken();
-        print('DEBUG – token setelah login: $savedToken');
+        debugPrint('LOGIN_SCREEN: Token saved: $savedToken');
 
-        _showSnackBar(response.message ?? "Login successful!", AppColors.green);
+        // >>> NEW DEBUG PRINT: Print what message and color are used for YOUR snackbar
+        String snackbarMessage = response.message ?? "Login successful!";
+        Color snackbarColor = AppColors.successGreen;
+        debugPrint(
+          'LOGIN_SCREEN: Showing MY snackbar with message: "$snackbarMessage" and color: $snackbarColor',
+        ); // Add this
+        _showSnackBar(snackbarMessage, snackbarColor);
 
-        if (!mounted) return;
+        debugPrint(
+          'LOGIN_SCREEN: Mounted status BEFORE navigation check: $mounted',
+        );
+        if (!mounted) {
+          debugPrint(
+            'LOGIN_SCREEN: Widget is NOT mounted. Navigation aborted.',
+          );
+          return;
+        }
+        debugPrint(
+          'LOGIN_SCREEN: Widget is mounted. Attempting to navigate to ${HomeScreen16.id}',
+        );
         Navigator.pushReplacementNamed(context, HomeScreen16.id);
       } else {
-        // Jika response.data, token, atau user null meskipun status 200, berarti ada masalah di data API
-        throw Exception(
-          response.message ?? "Login failed: Invalid response from server.",
+        // If response.data, token, or user null even if status 200, it's an API data issue
+        // OR if response.status is not 'success' (e.g., 'error')
+        debugPrint(
+          'LOGIN_SCREEN: Login failed: Invalid response data structure or status.',
         );
+        String errorMessage =
+            response.message ?? "Login failed. Invalid response from server.";
+        if (response.error != null && response.error!.isNotEmpty) {
+          errorMessage = response.error!;
+        }
+        // >>> NEW DEBUG PRINT: Print what message and color are used for MY error snackbar
+        debugPrint(
+          'LOGIN_SCREEN: Showing MY error snackbar with message: "$errorMessage" and color: ${AppColors.errorRed}',
+        ); // Add this
+        _showSnackBar(errorMessage, AppColors.errorRed); // Used errorRed
       }
     } on Exception catch (e) {
-      print('Login Error: $e');
+      debugPrint('LOGIN_SCREEN: Login Exception caught: $e');
       String errorMessage = "An unexpected error occurred.";
       if (e.toString().contains("Invalid credentials")) {
         errorMessage = "Invalid email or password.";
@@ -112,21 +153,35 @@ class _LoginScreen16State extends State<LoginScreen16> {
       } else {
         errorMessage = e.toString();
       }
-      _showSnackBar(errorMessage, AppColors.redAccent);
+      // >>> NEW DEBUG PRINT: Print what message and color are used for MY exception snackbar
+      debugPrint(
+        'LOGIN_SCREEN: Showing MY exception snackbar with message: "$errorMessage" and color: ${AppColors.redAccent}',
+      ); // Add this
+      _showSnackBar(errorMessage, AppColors.redAccent); // Used errorRed
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
+        debugPrint('LOGIN_SCREEN: _isLoading set to false.');
+      } else {
+        debugPrint(
+          'LOGIN_SCREEN: Widget not mounted in finally block. Cannot set state.',
+        );
       }
     }
   }
 
   void _showSnackBar(String message, Color color) {
-    if (!mounted) return;
+    if (!mounted) {
+      debugPrint('LOGIN_SCREEN: Cannot show snackbar, widget not mounted.');
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           message,
-          style: GoogleFonts.montserrat(color: Colors.white),
+          style: GoogleFonts.montserrat(
+            color: AppColors.textLight,
+          ), // Use AppColors.textLight
         ),
         backgroundColor: color,
         duration: const Duration(seconds: 3),
@@ -171,7 +226,7 @@ class _LoginScreen16State extends State<LoginScreen16> {
                         'Welcome Back',
                         style: GoogleFonts.playfairDisplay(
                           fontSize: 32,
-                          color: Colors.white,
+                          color: AppColors.textLight, // Use AppColors.textLight
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -248,7 +303,9 @@ class _LoginScreen16State extends State<LoginScreen16> {
                           TextSpan(
                             text: "Don't have an account? ",
                             style: GoogleFonts.montserrat(
-                              color: Colors.white.withOpacity(0.85),
+                              color: AppColors.textLight.withOpacity(
+                                0.85,
+                              ), // Use AppColors.textLight
                               fontStyle: FontStyle.italic,
                               fontSize: 14,
                             ),
@@ -290,7 +347,9 @@ class _LoginScreen16State extends State<LoginScreen16> {
   }) {
     return TextFormField(
       controller: controller,
-      style: GoogleFonts.montserrat(color: Colors.white),
+      style: GoogleFonts.montserrat(
+        color: AppColors.textLight,
+      ), // Use AppColors.textLight
       obscureText: isPassword,
       keyboardType: keyboardType,
       textInputAction: textInputAction,
@@ -299,9 +358,13 @@ class _LoginScreen16State extends State<LoginScreen16> {
       validator: validator,
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.montserrat(color: Colors.white54),
+        hintStyle: GoogleFonts.montserrat(
+          color: AppColors.textLight.withOpacity(0.54),
+        ), // Use AppColors.textLight
         filled: true,
-        fillColor: Colors.white.withOpacity(0.1),
+        fillColor: AppColors.textLight.withOpacity(
+          0.1,
+        ), // Use AppColors.textLight
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -329,7 +392,9 @@ class _LoginScreen16State extends State<LoginScreen16> {
                     isCurrentPasswordVisible
                         ? Icons.visibility
                         : Icons.visibility_off,
-                    color: Colors.white54,
+                    color: AppColors.textLight.withOpacity(
+                      0.54,
+                    ), // Use AppColors.textLight
                   ),
                   onPressed: toggleVisibility,
                 )

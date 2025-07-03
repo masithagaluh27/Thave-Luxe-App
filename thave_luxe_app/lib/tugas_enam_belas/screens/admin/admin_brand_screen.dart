@@ -144,7 +144,7 @@ class _ManageBrandsScreen16State extends State<ManageBrandsScreen16> {
                 try {
                   if (isEditing) {
                     await _apiProvider.updateBrand(
-                      brandId: brandToEdit!.id!,
+                      brandId: brandToEdit.id!,
                       name: nameController.text,
                     );
                     _showSnackBar(
@@ -323,7 +323,7 @@ class _ManageBrandsScreen16State extends State<ManageBrandsScreen16> {
   Widget _buildBrandCard(Brand brand) {
     return Card(
       elevation: 4,
-      color: AppColors.cardBackgroundLight,
+      color: AppColors.cardBackground,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -393,16 +393,29 @@ class _ManageBrandsScreen16State extends State<ManageBrandsScreen16> {
         backgroundColor: AppColors.darkBackground,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: AppColors.lightText),
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.primaryGold),
           onPressed: () {
             Navigator.pop(context);
+            //inicomment
           },
         ),
+        actions:
+            _isAdmin
+                ? [
+                  IconButton(
+                    onPressed: () => _showBrandFormDialog(),
+                    icon: Icon(Icons.add, color: AppColors.primaryGold),
+                  ),
+                ]
+                : null,
       ),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [AppColors.darkBackground, AppColors.backgroundGradientEnd],
+            colors: [
+              AppColors.darkBackground,
+              AppColors.backgroundGradientLight,
+            ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -507,15 +520,6 @@ class _ManageBrandsScreen16State extends State<ManageBrandsScreen16> {
                   ),
         ),
       ),
-      floatingActionButton:
-          _isAdmin
-              ? FloatingActionButton(
-                onPressed: () => _showBrandFormDialog(),
-                backgroundColor: AppColors.primaryGold,
-                child: const Icon(Icons.add, color: AppColors.darkBackground),
-                tooltip: 'Add New Brand',
-              )
-              : null,
     );
   }
 }
