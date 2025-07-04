@@ -41,7 +41,17 @@ class MyApp extends StatelessWidget {
         HomeScreen16.id: (context) => const HomeScreen16(),
         ProfileScreen16.id: (context) => const ProfileScreen16(),
         CartScreen16.id: (context) => const CartScreen16(),
-        CheckoutScreen16.id: (context) => const CheckoutScreen16(),
+        CheckoutScreen16.id: (context) {
+          final args =
+              ModalRoute.of(context)?.settings.arguments
+                  as Map<String, dynamic>?;
+          if (args == null || args['checkoutData'] == null) {
+            return const Scaffold(
+              body: Center(child: Text('Checkout data missing')),
+            );
+          }
+          return CheckoutScreen16(checkoutData: args['checkoutData']);
+        },
         HistoryScreen.id: (context) => const HistoryScreen(),
 
         CategoryScreen.id: (context) => const CategoryScreen(),

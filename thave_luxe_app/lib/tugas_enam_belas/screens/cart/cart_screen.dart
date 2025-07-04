@@ -61,11 +61,18 @@ class _CartScreen16State extends State<CartScreen16> {
   }
 
   double _calculateTotalPrice() {
-    return _cartItems.fold(
-      0.0,
-      (sum, item) =>
-          sum + (item.product?.price?.toDouble() ?? 0.0) * (item.quantity ?? 0),
-    );
+    return _cartItems.fold(0.0, (sum, item) {
+      final double originalPrice = item.product?.price?.toDouble() ?? 0.0;
+      final double? discount = item.product?.discount;
+      final int quantity = item.quantity ?? 0;
+
+      if (discount != null && discount > 0) {
+        final double discountedPrice = originalPrice * (1 - discount / 100);
+        return sum + (discountedPrice * quantity);
+      } else {
+        return sum + (originalPrice * quantity);
+      }
+    });
   }
 
   void _showSnackBar(String message, Color color) {
@@ -74,9 +81,7 @@ class _CartScreen16State extends State<CartScreen16> {
         SnackBar(
           content: Text(
             message,
-            style: GoogleFonts.montserrat(
-              color: AppColors.textLight,
-            ), // Adjusted for light background snackbar
+            style: GoogleFonts.montserrat(color: AppColors.textLight),
           ),
           backgroundColor: color,
           duration: const Duration(seconds: 2),
@@ -239,24 +244,20 @@ class _CartScreen16State extends State<CartScreen16> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight, // Changed to light background
+      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         title: Text(
           'Your Cart',
           style: GoogleFonts.playfairDisplay(
             fontWeight: FontWeight.bold,
-            color: AppColors.textDark, // Changed to dark text
+            color: AppColors.textDark,
           ),
         ),
         centerTitle: true,
-        backgroundColor:
-            Colors.transparent, // Transparent to show body gradient
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back_ios,
-            color: AppColors.primaryGold,
-          ), // Changed to dark icon
+          icon: const Icon(Icons.arrow_back_ios, color: AppColors.primaryGold),
           onPressed: () {
             Navigator.pop(context);
           },
@@ -265,7 +266,6 @@ class _CartScreen16State extends State<CartScreen16> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            // Updated gradient for light background
             colors: [
               AppColors.backgroundLight,
               AppColors.backgroundGradientLight,
@@ -306,9 +306,7 @@ class _CartScreen16State extends State<CartScreen16> {
                                 onPressed: _fetchCartItems,
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppColors.primaryGold,
-                                  foregroundColor:
-                                      AppColors
-                                          .textLight, // Adjusted for light background
+                                  foregroundColor: AppColors.textLight,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -331,9 +329,7 @@ class _CartScreen16State extends State<CartScreen16> {
                           child: Text(
                             'Your cart is empty. Start adding some luxury items!',
                             style: GoogleFonts.playfairDisplay(
-                              color:
-                                  AppColors
-                                      .subtleText, // Changed for light theme
+                              color: AppColors.subtleText,
                               fontSize: 18,
                             ),
                             textAlign: TextAlign.center,
@@ -366,7 +362,7 @@ class _CartScreen16State extends State<CartScreen16> {
         item.quantity == null) {
       return Card(
         elevation: 5,
-        color: AppColors.cardBackground, // Changed to light card background
+        color: AppColors.cardBackground,
         margin: const EdgeInsets.symmetric(vertical: 8.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
@@ -384,9 +380,18 @@ class _CartScreen16State extends State<CartScreen16> {
             ? item.product!.imageUrls!.first
             : '';
 
+    final double originalProductPrice = item.product!.price!.toDouble();
+    final double? discount = item.product?.discount;
+    final double finalProductPrice =
+        (discount != null && discount > 0)
+            ? originalProductPrice * (1 - discount / 100)
+            : originalProductPrice;
+
+    final double itemSubtotal = finalProductPrice * (item.quantity ?? 0);
+
     return Card(
       elevation: 5,
-      color: AppColors.cardBackground, // Changed to light card background
+      color: AppColors.cardBackground,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -437,7 +442,7 @@ class _CartScreen16State extends State<CartScreen16> {
                   Text(
                     item.product!.name!,
                     style: GoogleFonts.playfairDisplay(
-                      color: AppColors.textDark, // Dark text on light card
+                      color: AppColors.textDark,
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -445,27 +450,51 @@ class _CartScreen16State extends State<CartScreen16> {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
+                  if (discount != null && discount > 0)
+                    Text(
+                      'Original: ${_currencyFormatter.format(originalProductPrice)}',
+                      style: GoogleFonts.montserrat(
+                        color: AppColors.subtleText,
+                        fontSize: 13,
+                        decoration: TextDecoration.lineThrough,
+                      ),
+                    ),
                   Text(
-                    'Price: ${_currencyFormatter.format(item.product!.price!.toDouble())}',
+                    'Price: ${_currencyFormatter.format(finalProductPrice)}',
                     style: GoogleFonts.montserrat(
-                      color: AppColors.subtleText, // Subtle dark text
-                      fontSize: 14,
+                      color: AppColors.primaryGold,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
+                  if (discount != null && discount > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4.0),
+                      child: Text(
+                        'Discount: ${discount.toInt()}%',
+                        style: GoogleFonts.montserrat(
+                          color: AppColors.green,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 12),
+                  // Moved Quantity controls here, under the product details
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildQuantityButton(
                         Icons.remove,
                         () => _updateQuantity(item.product!.id!, -1),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: Text(
                           item.quantity.toString(),
                           style: GoogleFonts.montserrat(
-                            color: AppColors.textDark, // Dark text
-                            fontSize: 18,
+                            color: AppColors.textDark,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -474,12 +503,46 @@ class _CartScreen16State extends State<CartScreen16> {
                         Icons.add,
                         () => _updateQuantity(item.product!.id!, 1),
                       ),
-                      const Spacer(),
+                    ],
+                  ),
+                  const SizedBox(
+                    height: 12,
+                  ), // Space between quantity and subtotal/delete
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Subtotal:', // Label for the item subtotal
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.textDark,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          _currencyFormatter.format(itemSubtotal),
+                          style: GoogleFonts.playfairDisplay(
+                            color: AppColors.textDark,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.end,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       IconButton(
                         icon: const Icon(
                           Icons.delete_outline,
                           color: AppColors.redAccent,
-                          size: 28,
+                          size: 26,
                         ),
                         onPressed: () {
                           if (item.id != null) {
@@ -507,19 +570,19 @@ class _CartScreen16State extends State<CartScreen16> {
   Widget _buildQuantityButton(IconData icon, VoidCallback onPressed) {
     return InkWell(
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        width: 42,
-        height: 42,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: AppColors.primaryGold.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: AppColors.primaryGold.withOpacity(0.4),
-            width: 1.5,
+            width: 1.0,
           ),
         ),
-        child: Icon(icon, color: AppColors.primaryGold, size: 22),
+        child: Icon(icon, color: AppColors.primaryGold, size: 18),
       ),
     );
   }
@@ -528,14 +591,14 @@ class _CartScreen16State extends State<CartScreen16> {
     return Container(
       padding: const EdgeInsets.all(25.0),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground, // Changed to light card background
+        color: AppColors.cardBackground,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1), // More subtle shadow
+            color: Colors.black.withOpacity(0.1),
             spreadRadius: 2,
             blurRadius: 10,
-            offset: const Offset(0, -5), // Adjusted offset
+            offset: const Offset(0, -5),
           ),
         ],
       ),
@@ -548,7 +611,7 @@ class _CartScreen16State extends State<CartScreen16> {
               Text(
                 'Grand Total:',
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.textDark, // Changed to dark text
+                  color: AppColors.textDark,
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -556,7 +619,7 @@ class _CartScreen16State extends State<CartScreen16> {
               Text(
                 _currencyFormatter.format(_calculateTotalPrice()),
                 style: GoogleFonts.playfairDisplay(
-                  color: AppColors.primaryGold, // Gold accent for total
+                  color: AppColors.primaryGold,
                   fontSize: 25,
                   fontWeight: FontWeight.bold,
                 ),
@@ -570,8 +633,7 @@ class _CartScreen16State extends State<CartScreen16> {
               onPressed: _checkout,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryGold,
-                foregroundColor:
-                    AppColors.textLight, // Adjusted for light theme contrast
+                foregroundColor: AppColors.textLight,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),

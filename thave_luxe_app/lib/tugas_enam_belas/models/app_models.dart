@@ -190,11 +190,6 @@ class Brand {
     );
   }
 
-  // This getter was causing an issue if you didn't have a logoUrl in your API response.
-  // If your Brand API does not return a 'logo_url', remove this getter or implement it carefully.
-  // For now, I'm commenting it out as it's not directly related to the JSON parsing.
-  // get logoUrl => null;
-
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -317,9 +312,17 @@ class CartProduct {
   final String? name;
   final int? price;
   final int? stock; // Adding stock to CartProduct for quantity checks
+  final double? discount; // ADDED: Discount for CartProduct
   final List<String>? imageUrls; // Add imageUrls to CartProduct for display
 
-  CartProduct({this.id, this.name, this.price, this.stock, this.imageUrls});
+  CartProduct({
+    this.id,
+    this.name,
+    this.price,
+    this.stock,
+    this.discount,
+    this.imageUrls,
+  });
 
   factory CartProduct.fromJson(Map<String, dynamic> json) {
     return CartProduct(
@@ -327,6 +330,7 @@ class CartProduct {
       name: json['name'] as String?,
       price: _safeParseInt(json['price']),
       stock: _safeParseInt(json['stock']),
+      discount: _safeParseDouble(json['discount']), // PARSED: Discount
       imageUrls:
           (json['image_urls'] as List<dynamic>?)
               ?.map((e) => e as String)
@@ -340,6 +344,7 @@ class CartProduct {
       'name': name,
       'price': price,
       'stock': stock,
+      'discount': discount, // INCLUDED: Discount in toJson
       'image_urls': imageUrls,
     };
   }

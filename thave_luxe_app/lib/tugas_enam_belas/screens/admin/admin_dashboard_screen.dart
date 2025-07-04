@@ -20,13 +20,13 @@ class AdminDashboardScreen16 extends StatelessWidget {
       backgroundColor: AppColors.backgroundGradientLight,
       appBar: AppBar(
         centerTitle: true,
-        backgroundColor: AppColors.darkBackground,
+        backgroundColor: AppColors.backgroundGradientLight,
         elevation: 0,
         title: Text(
           'Admin Dashboard',
           style: GoogleFonts.playfairDisplay(
             fontWeight: FontWeight.bold,
-            color: AppColors.lightText,
+            color: AppColors.darkBackground,
           ),
         ),
         leading: IconButton(

@@ -37,9 +37,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   int _currentPageIndex = 0;
   late TabController _tabController;
 
-  // Menggunakan Category dari app_models.dart
-
-  User? _currentUser; // Menggunakan model User dari app_models.dart
+  User? _currentUser;
 
   bool _isLoadingInitialData = true;
   String? _initialDataErrorMessage;
@@ -48,8 +46,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
   late String _productBrandDisplay;
   late String _productCategoryDisplay;
   late String _productDescription;
-  late String _displayCurrentPrice;
   late List<String> _imageUrls;
+
+  // New variables for discount calculation and display
+  late double _originalPrice;
+  late double? _discountPercentage;
+  late double _finalPrice;
 
   final NumberFormat _currencyFormatter = NumberFormat.currency(
     locale: 'id_ID',
@@ -63,19 +65,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
 
     _availableStock = widget.product.stock ?? 0;
 
-    _productName = widget.product.name ?? 'Unknown Product';
+    _productName = widget.product.name ?? 'Produk Tidak Dikenal';
     _productBrandDisplay =
-        widget.brandName ?? widget.product.brandName ?? 'Unknown Brand';
+        widget.brandName ?? widget.product.brandName ?? 'Merek Tidak Dikenal';
     _productCategoryDisplay =
         widget.categoryName ??
         widget.product.categoryName ??
-        'Unknown Category';
+        'Kategori Tidak Dikenal';
 
     _productDescription =
-        widget.product.description ?? 'No description available.';
+        widget.product.description ?? 'Tidak ada deskripsi tersedia.';
 
-    final double productPrice = widget.product.price?.toDouble() ?? 0.0;
-    _displayCurrentPrice = _currencyFormatter.format(productPrice);
+    _originalPrice = widget.product.price?.toDouble() ?? 0.0;
+    _discountPercentage = widget.product.discount;
+    _finalPrice =
+        (_discountPercentage != null && _discountPercentage! > 0)
+            ? _originalPrice * (1 - _discountPercentage! / 100)
+            : _originalPrice;
 
     _imageUrls = [];
     if (widget.product.imageUrls != null &&
@@ -119,10 +125,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     });
 
     try {
-      await _fetchCategories();
+      // No need to fetch categories here if they are already passed or part of the product model
+      // await _fetchCategories(); // This function is empty and not needed here.
 
       _currentUser = await PreferenceHandler.getUserData();
-      print('Current User: ${_currentUser?.email}');
+      print('Pengguna Saat Ini: ${_currentUser?.email}');
 
       await _loadCurrentProductCartQuantity();
 
@@ -135,36 +142,38 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       if (mounted) {
         setState(() {
           _initialDataErrorMessage =
-              'ProductDetail: Failed to load initial data: ${e.toString().replaceFirst('Exception: ', '')}';
+              'Detail Produk: Gagal memuat data awal: ${e.toString().replaceFirst('Exception: ', '')}';
           _isLoadingInitialData = false;
         });
-        print('ProductDetail: Error fetching initial data: $e');
+        print('Detail Produk: Error mengambil data awal: $e');
       }
     }
   }
 
-  Future<void> _fetchCategories() async {
-    try {
-      if (mounted) {
-        setState(() {});
-      }
-    } on Exception catch (e) {
-      print('ProductDetail: Error fetching categories: ${e.toString()}');
-      if (mounted) {
-        setState(() {
-          _initialDataErrorMessage =
-              _initialDataErrorMessage != null
-                  ? '$_initialDataErrorMessage\nCategories: ${e.toString().replaceFirst('Exception: ', '')}'
-                  : 'Categories: ${e.toString().replaceFirst('Exception: ', '')}';
-        });
-      }
-    }
-  }
+  // This function is empty and not used, can be removed or kept for future use.
+  // For now, I'm commenting out its call in _fetchInitialData.
+  // Future<void> _fetchCategories() async {
+  //   try {
+  //     if (mounted) {
+  //       setState(() {});
+  //     }
+  //   } on Exception catch (e) {
+  //     print('ProductDetail: Error fetching categories: ${e.toString()}');
+  //     if (mounted) {
+  //       setState(() {
+  //         _initialDataErrorMessage =
+  //             _initialDataErrorMessage != null
+  //                 ? '$_initialDataErrorMessage\nCategories: ${e.toString().replaceFirst('Exception: ', '')}'
+  //                 : 'Categories: ${e.toString().replaceFirst('Exception: ', '')}';
+  //       });
+  //     }
+  //   }
+  // }
 
   Future<void> _loadCurrentProductCartQuantity() async {
     final int? productId = widget.product.id;
     if (productId == null) {
-      debugPrint('Product ID is null, cannot load cart quantity.');
+      debugPrint('ID Produk kosong, tidak dapat memuat jumlah keranjang.');
       return;
     }
 
@@ -189,7 +198,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           }
         });
         print(
-          'Current product in cart quantity: $_currentProductInCartQuantity',
+          'Jumlah produk saat ini di keranjang: $_currentProductInCartQuantity',
         );
       } else {
         if (!mounted) return;
@@ -200,7 +209,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       }
     } on Exception catch (e) {
       _showError(
-        'Could not load current cart status: ${e.toString().replaceFirst('Exception: ', '')}',
+        'Tidak dapat memuat status keranjang saat ini: ${e.toString().replaceFirst('Exception: ', '')}',
       );
     }
   }
@@ -223,7 +232,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     final int? productId = widget.product.id;
 
     if (productId == null) {
-      _showError('Error: Product ID is invalid.');
+      _showError('Error: ID Produk tidak valid.');
       return;
     }
 
@@ -234,7 +243,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please select a quantity to add.',
+            'Harap pilih jumlah untuk ditambahkan.',
             style: GoogleFonts.montserrat(color: AppColors.lightText),
           ),
           backgroundColor: AppColors.blue,
@@ -247,7 +256,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Adding $_selectedQuantityToAdd would exceed total stock. Only $_availableStock in stock. Your cart currently has $_currentProductInCartQuantity of this item.',
+            'Menambahkan $_selectedQuantityToAdd akan melebihi total stok. Hanya $_availableStock yang tersedia. Keranjang Anda saat ini memiliki $_currentProductInCartQuantity dari item ini.',
             style: GoogleFonts.montserrat(
               color: const Color.fromARGB(255, 185, 185, 185),
             ),
@@ -263,7 +272,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Please log in to add items to cart.',
+            'Silakan masuk untuk menambahkan item ke keranjang.',
             style: GoogleFonts.montserrat(color: AppColors.lightText),
           ),
           backgroundColor: AppColors.blue,
@@ -276,7 +285,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Adding to cart...',
+          'Menambahkan ke keranjang...',
           style: GoogleFonts.montserrat(color: AppColors.lightText),
         ),
         backgroundColor: AppColors.primaryGold,
@@ -294,7 +303,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            response.message ?? 'Product added to cart successfully!',
+            response.message ?? 'Produk berhasil ditambahkan ke keranjang!',
             style: GoogleFonts.montserrat(color: AppColors.lightText),
           ),
           backgroundColor: AppColors.successGreen,
@@ -312,13 +321,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Failed to add to cart: ${e.toString().replaceFirst('Exception: ', '')}',
+            'Gagal menambahkan ke keranjang: ${e.toString().replaceFirst('Exception: ', '')}',
             style: GoogleFonts.montserrat(color: AppColors.lightText),
           ),
           backgroundColor: AppColors.errorRed,
         ),
       );
-      print('Add to Cart Error: $e');
+      print('Error Menambahkan ke Keranjang: $e');
     }
   }
 
@@ -370,7 +379,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         ),
         const SizedBox(width: 10),
         Text(
-          'Available: $_availableStock',
+          'Tersedia: $_availableStock',
           style: GoogleFonts.montserrat(
             fontSize: 14,
             color: AppColors.subtleText,
@@ -380,7 +389,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
           Padding(
             padding: const EdgeInsets.only(left: 10.0),
             child: Text(
-              'In Cart: $_currentProductInCartQuantity',
+              'Di Keranjang: $_currentProductInCartQuantity',
               style: GoogleFonts.montserrat(
                 fontSize: 14,
                 color: AppColors.subtleText,
@@ -399,7 +408,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor:
-              onPressed != null ? const Color(0xffCFAF6B) : Color(0xffCFAF6B),
+              onPressed != null
+                  ? const Color(0xffCFAF6B)
+                  : const Color(0xffD4AF37).withOpacity(0.5), // Disabled color
           foregroundColor: AppColors.darkBackground,
           minimumSize: const Size(40, 40),
           padding: EdgeInsets.zero,
@@ -438,7 +449,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Please log in to view your cart.',
+                    'Silakan masuk untuk melihat keranjang Anda.',
                     style: GoogleFonts.montserrat(color: AppColors.lightText),
                   ),
                   backgroundColor: AppColors.blue,
@@ -507,7 +518,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                   ),
                   child: Text(
-                    'Retry',
+                    'Coba Lagi',
                     style: GoogleFonts.playfairDisplay(
                       color: AppColors.darkBackground,
                     ),
@@ -520,31 +531,27 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
       );
     }
 
-    // `category` variable is now `_productCategoryDisplay` which is initialized in initState.
-    // The previous line was redundant and could be removed.
-    // final String category = widget.categoryName ?? widget.product.category?.name ?? _categoriesMap[widget.product.categoryId]?.name ?? 'Unknown Category';
     final String category = _productCategoryDisplay;
 
-    // Cek kondisi untuk tombol "Add to Cart"
     bool canAddToCart = false;
     String addToCartButtonText;
 
     if (_availableStock == 0) {
-      addToCartButtonText = 'Out of Stock';
+      addToCartButtonText = 'Stok Habis';
       canAddToCart = false;
     } else if (_currentProductInCartQuantity >= _availableStock) {
-      addToCartButtonText = 'Already Max In Cart';
+      addToCartButtonText = 'Sudah Maksimal di Keranjang';
       canAddToCart = false;
     } else if (_selectedQuantityToAdd == 0) {
-      addToCartButtonText = 'Select Quantity';
+      addToCartButtonText = 'Pilih Kuantitas';
       canAddToCart = false;
     } else {
-      addToCartButtonText = 'Add to Cart';
+      addToCartButtonText = 'Tambahkan ke Keranjang';
       canAddToCart = true;
     }
 
     return Scaffold(
-      backgroundColor: Color(0xFFF0EAD6),
+      backgroundColor: const Color(0xFFF0EAD6),
       appBar: _buildAppBar(context),
       body: Container(
         decoration: const BoxDecoration(
@@ -638,6 +645,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                         ),
                       ),
                     ),
+                  // Discount Badge
+                  if (_discountPercentage != null && _discountPercentage! > 0)
+                    Positioned(
+                      top: 60, // Adjust position as needed
+                      left: 20, // Adjust position as needed
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              AppColors.green, // Use green for discount badge
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${_discountPercentage!.toInt()}% OFF',
+                          style: GoogleFonts.montserrat(
+                            color: AppColors.lightText,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
                 ],
               ),
               Padding(
@@ -649,7 +681,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       '$_productBrandDisplay · $category',
                       style: GoogleFonts.montserrat(
                         fontSize: 16,
-                        color: Color(0xff2C2C2C),
+                        color: const Color(0xff2C2C2C),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -659,14 +691,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xff2C2C2C),
+                        color: const Color(0xff2C2C2C),
                       ),
                     ),
                     const SizedBox(height: 10),
                     Row(
                       children: <Widget>[
+                        if (_discountPercentage != null &&
+                            _discountPercentage! > 0)
+                          Text(
+                            _currencyFormatter.format(_originalPrice),
+                            style: GoogleFonts.playfairDisplay(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.subtleText,
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        if (_discountPercentage != null &&
+                            _discountPercentage! > 0)
+                          const SizedBox(width: 10),
                         Text(
-                          _displayCurrentPrice,
+                          _currencyFormatter.format(_finalPrice),
                           style: GoogleFonts.playfairDisplay(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -686,7 +732,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      'Quantity',
+                      'Kuantitas',
                       style: GoogleFonts.playfairDisplay(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -704,7 +750,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                           backgroundColor:
                               canAddToCart
                                   ? const Color(0xffCFAF6B)
-                                  : Color(0xffD4AF37),
+                                  : const Color(0xffD4AF37).withOpacity(0.5),
                           foregroundColor: AppColors.darkBackground,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(

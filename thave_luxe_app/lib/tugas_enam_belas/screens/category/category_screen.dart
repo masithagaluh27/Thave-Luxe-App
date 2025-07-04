@@ -3,8 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:lottie/lottie.dart';
 import 'package:thave_luxe_app/constant/app_color.dart';
 import 'package:thave_luxe_app/tugas_enam_belas/api/api_provider.dart'; // Menggunakan ApiProvider baru
-import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart'; // Menggunakan model tunggal
-import 'package:thave_luxe_app/tugas_enam_belas/screens/category/category_detail_screen.dart'; // Path sudah benar
+import 'package:thave_luxe_app/tugas_enam_belas/models/app_models.dart';
+import 'package:thave_luxe_app/tugas_enam_belas/screens/category/category_detail_screen.dart'; // Menggunakan model tunggal
+
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -189,7 +190,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         IconButton(
           icon: const Icon(
             Icons.notifications_none_outlined,
-            color: AppColors.subtleGrey,
+            color: AppColors.primaryGold,
             size: 28,
           ),
           onPressed: () {
